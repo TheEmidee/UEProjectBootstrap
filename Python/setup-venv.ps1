@@ -1,16 +1,16 @@
-# PowerShell script to set up Python virtual environment and install requirements
-# Usage: .\setup-env.ps1
+$configPath = Join-Path -Path $PSScriptRoot -ChildPath "..\config.ps1"
 
-param(
-    [string]$VenvName = ".venv",
-    [string]$RequirementsFile = "requirements.txt",
-    [switch]$Force
-)
+. $configPath
 
-Write-Host "Setting up Python virtual environment..." -ForegroundColor Green
+$pythonFolder = Resolve-Path( Join-Path -Path $PSScriptRoot -ChildPath "..\..\Python" )
+
+$requirementsFilePath = Join-Path -Path $PSScriptRoot -ChildPath $PYTHON_REQUIREMENTS_FILE_NAME
+$vEnvFolderPath = Join-Path -Path $pythonFolder -ChildPath $PYTHON_VENV_NAME
+
+Write-Host "Setting up Python virtual environment in $vEnvFolderPath" -ForegroundColor Green
 
 # Save current location and move to script root
-Push-Location $PSScriptRoot
+Push-Location $pythonFolder
 
 try {
     # Check if Python is installed
@@ -23,12 +23,9 @@ try {
     }
 
     # Check if requirements.txt exists
-    if (!(Test-Path $RequirementsFile)) {
-        Write-Host "Warning: $RequirementsFile not found in current directory" -ForegroundColor Yellow
-        $response = Read-Host "Continue without installing requirements? (y/n)"
-        if ($response -ne "y" -and $response -ne "Y") {
-            return
-        }
+    if (!(Test-Path $requirementsFilePath)) {
+        Write-Host "Warning: $requirementsFilePath not found" -ForegroundColor Yellow
+        exit 1
     }
 
     # Function to get file hash
@@ -42,10 +39,10 @@ try {
     }
 
     # Hash tracking file
-    $hashFile = ".\$VenvName\.requirements_hash"
+    $hashFile = Join-Path -Path $vEnvFolderPath -ChildPath "requirements_hash"
 
     # Get current hash of pyproject.toml
-    $currentHash = Get-FileHashString -FilePath $RequirementsFile
+    $currentHash = Get-FileHashString -FilePath $requirementsFilePath
 
     # Get stored hash if it exists
     $storedHash = $null
@@ -56,16 +53,10 @@ try {
     # Check if requirements have changed
     $requirementsChanged = ($currentHash -ne $storedHash) -or $Force
 
-    # Remove existing virtual environment if Force flag is used
-    if ($Force -and (Test-Path $VenvName)) {
-        Write-Host "Removing existing virtual environment..." -ForegroundColor Yellow
-        Remove-Item -Recurse -Force $VenvName
-    }
-
     # Create virtual environment if it doesn't exist
-    if (!(Test-Path $VenvName)) {
-        Write-Host "Creating virtual environment '$VenvName'..." -ForegroundColor Yellow
-        python -m venv $VenvName
+    if (!(Test-Path $PYTHON_VENV_NAME)) {
+        Write-Host "Creating virtual environment '$PYTHON_VENV_NAME'..." -ForegroundColor Yellow
+        python -m venv $PYTHON_VENV_NAME
         
         if ($LASTEXITCODE -ne 0) {
             Write-Host "Error: Failed to create virtual environment" -ForegroundColor Red
@@ -74,12 +65,12 @@ try {
         Write-Host "Virtual environment created successfully!" -ForegroundColor Green
         $requirementsChanged = $true  # Force install on new venv
     } else {
-        Write-Host "Virtual environment '$VenvName' already exists" -ForegroundColor Yellow
+        Write-Host "Virtual environment '$PYTHON_VENV_NAME' already exists" -ForegroundColor Yellow
     }
 
     # Activate virtual environment
     Write-Host "Activating virtual environment..." -ForegroundColor Yellow
-    & ".\$VenvName\Scripts\Activate.ps1"
+    & ".\$PYTHON_VENV_NAME\Scripts\Activate.ps1"
 
     if ($LASTEXITCODE -ne 0) {
         Write-Host "Error: Failed to activate virtual environment" -ForegroundColor Red
@@ -91,10 +82,10 @@ try {
     python -m pip install --upgrade pip
 
     # Install requirements only if they changed
-    if (Test-Path $RequirementsFile) {
+    if (Test-Path $vEnvFolderPath) {
         if ($requirementsChanged) {
-            Write-Host "Requirements have changed. Installing packages from $RequirementsFile..." -ForegroundColor Yellow
-            pip install -r $RequirementsFile --upgrade
+            Write-Host "Requirements have changed. Installing packages from $requirementsFilePath..." -ForegroundColor Yellow
+            pip install -r $requirementsFilePath --upgrade
             
             if ($LASTEXITCODE -eq 0) {
                 Write-Host "All packages installed successfully!" -ForegroundColor Green
@@ -112,8 +103,6 @@ try {
 
     Write-Host "`nSetup complete!" -ForegroundColor Green
     Write-Host "Virtual environment is now active." -ForegroundColor Green
-    Write-Host "To deactivate later, run: deactivate" -ForegroundColor Cyan
-    Write-Host "To activate again, run: .\$VenvName\Scripts\Activate.ps1" -ForegroundColor Cyan
 
 } finally {
     # This block runs no matter what happens in the 'try' block

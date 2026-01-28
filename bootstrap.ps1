@@ -24,21 +24,59 @@ if (-not $projectRoot) {
     exit 1
 }
 
+function Sanitize-Path($path) {
+    return $path -replace '^\\.\\', '' -replace '\\', '/'
+}
+
+function Get-RelativePath($path) {
+    return Sanitize-Path( ( $path | Resolve-Path -Relative -RelativeBasePath $projectRoot ) )
+}
+
+$bootStrapFolder = Get-RelativePath $scriptDir
+$bootstrapPythonFolder = Sanitize-Path ( Join-Path -Path $bootStrapFolder -ChildPath "Python" )
+$pythonAbsoluteFolder = Sanitize-Path ( Join-Path -Path $projectRoot -ChildPath "Scripts/Python" )
+
+$pythonRelativeFolder = Get-RelativePath $pythonAbsoluteFolder
+$pythonScriptsFolder = Sanitize-Path ( Join-Path -Path $pythonRelativeFolder -ChildPath ".venv/Scripts" )
+
+function Copy-PythonFile($fileName) {
+    $sourcePath = Join-Path -Path $scriptDir -ChildPath "Python/$fileName"
+    $destinationPath = Join-Path -Path $pythonAbsoluteFolder -ChildPath $fileName
+
+    if (Test-Path -Path $sourcePath) {
+        if (-not (Test-Path -Path $destinationPath)) {
+            Copy-Item -Path $sourcePath -Destination $destinationPath -Force
+            Write-Host "Copied $fileName to $destinationPath" -ForegroundColor Green
+        } else {
+            Write-Host "File $fileName already exists at $destinationPath. Skipping copy." -ForegroundColor Yellow
+        }
+    } else {
+        Write-Host "Source file $sourcePath does not exist. Skipping copy." -ForegroundColor Yellow
+    }
+}
+
+function Setup-PythonFolder {
+    
+    if (-not (Test-Path -Path $pythonAbsoluteFolder)) {
+        Write-Host "`nCreating Python folder at $pythonAbsoluteFolder..." -ForegroundColor Cyan
+        New-Item -ItemType Directory -Force -Path $pythonAbsoluteFolder | Out-Null
+    } else {
+        Write-Host "`nPython folder already exists at $pythonAbsoluteFolder. Skipping creation." -ForegroundColor Yellow
+    }
+
+    Copy-PythonFile ".gitignore"
+}
+
 function Write-SetupFile {
     # Define the output file path
     $outputFile = Join-Path -Path $projectRoot -ChildPath "Setup.ps1"
 
     if ( -not ( Test-Path -Path $outputFile ) ) {
-        # Calculate the PyScripts folder location relative to project root
-        $pyScriptsFolder = $scriptDir | Resolve-Path -Relative -RelativeBasePath $projectRoot
-        $pyScriptsFolder = $pyScriptsFolder -replace '^\\.\\', '' -replace '\\', '/'
-        $aliasesFolder = ( Join-Path -Path $pyScriptsFolder -ChildPath ".venv/Scripts" ) -replace '^\\.\\', '' -replace '\\', '/'
-
         $setupContent = @"
     try {
-        & "$pyScriptsFolder/install-python.ps1"
-        & "$pyScriptsFolder/setup-venv.ps1"
-        & "$aliasesFolder/ue-check-engine-installation.exe"
+        & "$bootstrapPythonFolder/install-python.ps1"
+        & "$bootstrapPythonFolder/setup-venv.ps1"
+        & "$pythonScriptsFolder/ue-check-engine-installation.exe"
     }
     catch {
         Write-Error `$_.Exception.Message
@@ -102,14 +140,14 @@ function Write-CompileAndRunEditorFile {
         if ($executeConfirmation -eq 'Y' -or $executeConfirmation -eq 'y') {
             
             $compileAndRunEditorContent = @"
-    try {
-        & "$aliasesFolder/ue-close-editor.exe"
-        & "$aliasesFolder/ue-compile-editor.exe"
-        & "$aliasesFolder/ue-run-editor.exe"
-    }
-    catch {
-        Write-Error `$_.Exception.Message
-    }
+try {
+    & "$pythonScriptsFolder/ue-close-editor.exe"
+    & "$pythonScriptsFolder/ue-compile-editor.exe"
+    & "$pythonScriptsFolder/ue-run-editor.exe"
+}
+catch {
+    Write-Error `$_.Exception.Message
+}
 "@
 
             Set-Content -Path $compileAndRunEditorPath -Value $compileAndRunEditorContent -Encoding UTF8
@@ -132,11 +170,11 @@ function Write-BuildgraphFile {
 
             New-Item -ItemType Directory -Force -Path $buildGraphScriptDirPath
 
-            $pyScriptsFolder = [System.IO.Path]::GetRelativePath($buildGraphScriptDirPath, $scriptDir)
-            $pyScriptsFolder = $pyScriptsFolder -replace '^\\.\\', '' -replace '\\', '/'
+            $bootStrapFolder = [System.IO.Path]::GetRelativePath($buildGraphScriptDirPath, $scriptDir)
+            $bootStrapFolder = $bootStrapFolder -replace '^\\.\\', '' -replace '\\', '/'
 
             $buildgraphSampleContent = @"
-        & "$aliasesFolder/ue-run-buildgraph.exe" --target "Buildgraph Task Name" -set:Clean=True -set:Targets=MyGameClient+MyGameServer -set:TargetConfigurations=Development+Shipping
+        & "$pythonScriptsFolder/ue-run-buildgraph.exe" --target "Buildgraph Task Name" -set:Clean=True -set:Targets=MyGameClient+MyGameServer -set:TargetConfigurations=Development+Shipping
 "@
 
         Set-Content -Path $buildGraphScriptPath -Value $buildgraphSampleContent -Encoding UTF8
@@ -166,6 +204,7 @@ function Invoke-Setup {
     }
 }
 
+Setup-PythonFolder
 Write-SetupFile
 Write-ConfigFile
 Write-CompileAndRunEditorFile

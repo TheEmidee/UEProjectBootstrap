@@ -1,11 +1,13 @@
-$requiredVersionNumber = [version] "3.12.10"
+$configPath = Join-Path -Path $PSScriptRoot -ChildPath "..\config.ps1"
+
+. $configPath
 
 function Install-Python
 {
-    $pythonUrl = "https://www.python.org/ftp/python/$requiredVersionNumber/python-$requiredVersionNumber-amd64.exe"
-    $installerPath = "$env:TEMP\python-$requiredVersionNumber-installer.exe"
+    $pythonUrl = "https://www.python.org/ftp/python/$PYTHON_VERSION/python-$PYTHON_VERSION-amd64.exe"
+    $installerPath = "$env:TEMP\python-$PYTHON_VERSION-installer.exe"
 
-    Write-Host "Downloading Python $requiredVersionNumber..." -ForegroundColor Green
+    Write-Host "Downloading Python $PYTHON_VERSION..." -ForegroundColor Green
 
     try {
         Invoke-WebRequest -Uri $pythonUrl -OutFile $installerPath
@@ -15,7 +17,7 @@ function Install-Python
         exit 1
     }
 
-    Write-Host "Installing Python $requiredVersionNumber..." -ForegroundColor Green
+    Write-Host "Installing Python $PYTHON_VERSION..." -ForegroundColor Green
 
     # Install Python silently with options:
     # - /quiet: Silent installation
@@ -27,7 +29,7 @@ function Install-Python
 
     try {
         Start-Process -FilePath $installerPath -ArgumentList $installArgs -Wait
-        Write-Host "Python $requiredVersionNumber installed successfully!" -ForegroundColor Green
+        Write-Host "Python $PYTHON_VERSION installed successfully!" -ForegroundColor Green
     } catch {
         Write-Host "Error installing Python: $_" -ForegroundColor Red
         exit 1
@@ -60,13 +62,13 @@ function Test-PythonInstallation
 
         try {
             $currentVersionNumber = [version]$pythonVersionStr
-            $promptInstall = ($requiredVersionNumber -gt $currentVersionNumber)
+            $promptInstall = ($PYTHON_VERSION -gt $currentVersionNumber)
         } catch {
             $promptInstall = $true
         }
 
         if ( $promptInstall ) {
-            Write-Warning "The installed python version is not compatible. Current version is $currentVersionNumber. Required version is $($requiredVersionNumber)"
+            Write-Warning "The installed python version is not compatible. Current version is $currentVersionNumber. Required version is $($PYTHON_VERSION)"
             $choice = Read-Host "Do you want to install this version now? (Y/N)"
     
             # Check the user's response
