@@ -24,36 +24,42 @@ if (-not $projectRoot) {
     exit 1
 }
 
-function Sanitize-Path($path) {
+function Convert-Path($path) {
     return $path -replace '^\\.\\', '' -replace '\\', '/'
 }
 
 function Get-RelativePath($path) {
-    return Sanitize-Path( ( $path | Resolve-Path -Relative -RelativeBasePath $projectRoot ) )
+    return Convert-Path( ( $path | Resolve-Path -Relative -RelativeBasePath $projectRoot ) )
+}
+
+function Copy-File($sourceFileName, $destinationFolder, $force) {
+    $sourceFile = Join-Path -Path $scriptDir -ChildPath $sourceFileName
+
+    if ( -not ( Test-Path -Path $sourceFile ) ) {
+        Write-Host "Source file $sourceFile does not exist." -ForegroundColor Red
+        exit 1
+    }
+
+    $fileNameOnly = Split-Path -Path $sourceFile -Leaf
+
+    $destinationFile = Join-Path -Path $destinationFolder -ChildPath $fileNameOnly.
+    if ($force -eq $false -and ( Test-Path -Path $destinationFile ) ) {
+        Write-Host "File $destinationFile already exists. Skipping copy." -ForegroundColor Yellow
+        return $False
+    }
+
+    New-Item -ItemType Directory -Force -Path $destinationFolder | Out-Null
+    Copy-Item -Path $sourceFile -Destination $destinationFile -PassThru -Force | Out-Null
+    Write-Host "Copied $sourceFile to $destinationFile" -ForegroundColor Green
+    return $True
 }
 
 $bootStrapFolder = Get-RelativePath $scriptDir
-$bootstrapPythonFolder = Sanitize-Path ( Join-Path -Path $bootStrapFolder -ChildPath "Python" )
-$pythonAbsoluteFolder = Sanitize-Path ( Join-Path -Path $projectRoot -ChildPath "Scripts/Python" )
+$bootstrapPythonFolder = Convert-Path ( Join-Path -Path $bootStrapFolder -ChildPath "Python" )
+$pythonAbsoluteFolder = Convert-Path ( Join-Path -Path $projectRoot -ChildPath "Scripts/Python" )
 
 $pythonRelativeFolder = Get-RelativePath $pythonAbsoluteFolder
-$pythonScriptsFolder = Sanitize-Path ( Join-Path -Path $pythonRelativeFolder -ChildPath ".venv/Scripts" )
-
-function Copy-PythonFile($fileName) {
-    $sourcePath = Join-Path -Path $scriptDir -ChildPath "Python/$fileName"
-    $destinationPath = Join-Path -Path $pythonAbsoluteFolder -ChildPath $fileName
-
-    if (Test-Path -Path $sourcePath) {
-        if (-not (Test-Path -Path $destinationPath)) {
-            Copy-Item -Path $sourcePath -Destination $destinationPath -Force
-            Write-Host "Copied $fileName to $destinationPath" -ForegroundColor Green
-        } else {
-            Write-Host "File $fileName already exists at $destinationPath. Skipping copy." -ForegroundColor Yellow
-        }
-    } else {
-        Write-Host "Source file $sourcePath does not exist. Skipping copy." -ForegroundColor Yellow
-    }
-}
+$pythonScriptsFolder = Convert-Path ( Join-Path -Path $pythonRelativeFolder -ChildPath ".venv/Scripts" )
 
 function Setup-PythonFolder {
     
@@ -64,98 +70,31 @@ function Setup-PythonFolder {
         Write-Host "`nPython folder already exists at $pythonAbsoluteFolder. Skipping creation." -ForegroundColor Yellow
     }
 
-    Copy-PythonFile ".gitignore"
+    Copy-File "Python/.gitignore" $pythonAbsoluteFolder $true
 }
 
 function Write-SetupFile {
-    # Define the output file path
-    $outputFile = Join-Path -Path $projectRoot -ChildPath "Setup.ps1"
+    $setupFilePath = Join-Path -Path $projectRoot -ChildPath "Setup.ps1"
 
-    if ( -not ( Test-Path -Path $outputFile ) ) {
-        $setupContent = @"
-try {
-    & "$bootstrapPythonFolder/install-python.ps1"
-    & "$bootstrapPythonFolder/setup-venv.ps1"
-    & "$pythonScriptsFolder/ue-check-engine-installation.exe"
-}
-catch {
-    Write-Error `$_.Exception.Message
-    }
-"@
-
-        Write-Host "`nSetup.ps1 will be created at:" -ForegroundColor Cyan
-        Write-Host $outputFile -ForegroundColor Yellow
-        Write-Host "`nWith the following content:" -ForegroundColor Cyan
-        Write-Host $setupContent -ForegroundColor Gray
-
-        $confirmation = Read-Host "`nDo you want to proceed? (Y/N)"
-        if ($confirmation -ne 'Y' -and $confirmation -ne 'y') {
-            Write-Host "Operation cancelled." -ForegroundColor Yellow
-            return
-        }
-
-        # Write the file
-        try {
-            Set-Content -Path $outputFile -Value $setupContent -Encoding UTF8
-            Write-Host "`nSetup.ps1 has been successfully created!" -ForegroundColor Green
-            Write-Host "Location: $outputFile" -ForegroundColor Green
-        }
-        catch {
-            Write-Error "Failed to create Setup.ps1: $_"
-            exit 1
-        }
-    } else {
-        Write-Host "`nSetup.ps1 already exists at $outputFile. Skipping creation." -ForegroundColor Yellow
+    if ( Copy-File "Files/Setup.ps1" $projectRoot $true ) {
+        
+        (Get-Content $setupFilePath) `
+            -replace [regex]::Escape('$bootstrapPythonFolder'), $bootstrapPythonFolder `
+            -replace [regex]::Escape('$pythonScriptsFolder'), $pythonScriptsFolder | 
+            Set-Content $setupFilePath
     }
 }
 
 function Write-ConfigFile {
-    $configFilePath = Join-Path -Path $projectRoot -ChildPath "Config/PyScripts/config.ini"
-    if (-not (Test-Path -Path $configFilePath)) {
-        Write-Host "`nConfig file not found at $configFilePath. Creating a default config.ini..." -ForegroundColor Cyan
-        $defaultConfigContent = @"
-[Project]
-; BuildgraphPath = Scripts\Build\BuildGraph\BuildGraph.xml
-; BuildgraphSharedProperties = Publish_Directory=Saved/LocalBuilds
-; AutomationScriptsDirectories = Build/Scripts+Plugins/BuildInformation/Scripts/Automation
-
-[Jenkins]
-; BuildgraphSharedStoragePath = \\nas\jenkins\UE-BuildGraph
-"@
-
-        Set-Content -Path $configFilePath -Value $defaultConfigContent -Encoding UTF8
-        Write-Host "`nconfig.ini has been successfully created!" -ForegroundColor Green
-        Write-Host "Location: $configFilePath" -ForegroundColor Green
-    }
-    else {
-        Write-Host "`nConfig file already exists at $configFilePath. Skipping creation." -ForegroundColor Yellow
-    }
+    Copy-File "Files/config.ini" "Config/PyScripts" $false
 }
 
 function Write-CompileAndRunEditorFile {
     $compileAndRunEditorPath = Join-Path -Path $projectRoot -ChildPath "CompileAndRunEditor.ps1"
-
-    if (-not (Test-Path -Path $compileAndRunEditorPath)) {
-        $executeConfirmation = Read-Host "`nDo you want to create the CompileAndRunEditor.ps1 file? (Y/N)"
-        if ($executeConfirmation -eq 'Y' -or $executeConfirmation -eq 'y') {
-            
-            $compileAndRunEditorContent = @"
-try {
-    & "$pythonScriptsFolder/ue-close-editor.exe"
-    & "$pythonScriptsFolder/ue-compile-editor.exe"
-    & "$pythonScriptsFolder/ue-run-editor.exe"
-}
-catch {
-    Write-Error `$_.Exception.Message
-}
-"@
-
-            Set-Content -Path $compileAndRunEditorPath -Value $compileAndRunEditorContent -Encoding UTF8
-            Write-Host "`nCompileAndRunEditor.ps1 has been successfully created!" -ForegroundColor Green
-            Write-Host "Location: $compileAndRunEditorPath" -ForegroundColor Green
-        }
-    } else {
-        Write-Host "`nCompileAndRunEditor.ps1 already exists at $compileAndRunEditorPath. Skipping creation." -ForegroundColor Yellow
+        if ( Copy-File "Files/CompileAndRunEditor.ps1" $projectRoot $true ) {        
+            (Get-Content $compileAndRunEditorPath) `
+                -replace [regex]::Escape('$pythonScriptsFolder'), $pythonScriptsFolder | 
+                Set-Content $compileAndRunEditorPath
     }
 }
 
@@ -171,10 +110,10 @@ function Write-BuildgraphFile {
             New-Item -ItemType Directory -Force -Path $buildGraphScriptDirPath
 
             $bootStrapFolder = [System.IO.Path]::GetRelativePath($buildGraphScriptDirPath, $scriptDir)
-            $bootStrapFolder = $bootStrapFolder -replace '^\\.\\', '' -replace '\\', '/'
+            $bootStrapFolder = Convert-Path $bootStrapFolder
 
             $buildgraphSampleContent = @"
-        & "$pythonScriptsFolder/ue-run-buildgraph.exe" --target "Buildgraph Task Name" -set:Clean=True -set:Targets=MyGameClient+MyGameServer -set:TargetConfigurations=Development+Shipping
+& "$pythonScriptsFolder/ue-run-buildgraph.exe" --target "Buildgraph Task Name" -set:Clean=True -set:Targets=MyGameClient+MyGameServer -set:TargetConfigurations=Development+Shipping
 "@
 
         Set-Content -Path $buildGraphScriptPath -Value $buildgraphSampleContent -Encoding UTF8
@@ -184,6 +123,10 @@ function Write-BuildgraphFile {
     } else {
         Write-Host "`nBuildgraph script directory already exists at $buildGraphScriptDirPath. Skipping creation." -ForegroundColor Yellow
     }
+}
+
+function Write-PreCommitConfig {
+    Copy-File "Files/.pre-commit-config.yaml" $projectRoot $true
 }
 
 function Invoke-Setup {
@@ -209,4 +152,5 @@ Write-SetupFile
 Write-ConfigFile
 Write-CompileAndRunEditorFile
 Write-BuildgraphFile
+Write-PreCommitConfig
 Invoke-Setup
