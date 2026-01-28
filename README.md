@@ -1,12 +1,12 @@
-# UEPyScriptsBootstrap
+# UEProjectBootstrap
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) 
 
-Boostrap scripts to use UEPyScripts and GameDevTools
+Boostrap an unreal engine project with various tools and scripts, like UEPyScripts and GameDevTools
 
 ## Installation 🛠️
 
-- Add to your unreal engine repository as a submodule: `git submodule add git@github.com:TheEmidee/UEPyScriptsBootstrap Scripts/Python`
+- Add to your unreal engine repository as a submodule: `git submodule add git@github.com:TheEmidee/UEPyScriptsBootstrap Scripts/Bootstrap`
 
 ## Quick Start 🚀
 
