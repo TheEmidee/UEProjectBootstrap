@@ -24,52 +24,58 @@ if (-not $projectRoot) {
     exit 1
 }
 
-# Define the output file path
-$outputFile = Join-Path -Path $projectRoot -ChildPath "Setup.ps1"
+function Write-SetupFile {
+    # Define the output file path
+    $outputFile = Join-Path -Path $projectRoot -ChildPath "Setup.ps1"
 
-# Calculate the PyScripts folder location relative to project root
-$pyScriptsFolder = $scriptDir | Resolve-Path -Relative -RelativeBasePath $projectRoot
-$pyScriptsFolder = $pyScriptsFolder -replace '^\\.\\', '' -replace '\\', '/'
-$aliasesFolder = ( Join-Path -Path $pyScriptsFolder -ChildPath ".venv/Scripts" ) -replace '^\\.\\', '' -replace '\\', '/'
+    if ( -not ( Test-Path -Path $outputFile ) ) {
+        # Calculate the PyScripts folder location relative to project root
+        $pyScriptsFolder = $scriptDir | Resolve-Path -Relative -RelativeBasePath $projectRoot
+        $pyScriptsFolder = $pyScriptsFolder -replace '^\\.\\', '' -replace '\\', '/'
+        $aliasesFolder = ( Join-Path -Path $pyScriptsFolder -ChildPath ".venv/Scripts" ) -replace '^\\.\\', '' -replace '\\', '/'
 
-$setupContent = @"
-try {
-    & "$pyScriptsFolder/install-python.ps1"
-    & "$pyScriptsFolder/setup-venv.ps1"
-    & "$aliasesFolder/ue-check-engine-installation.exe"
-}
-catch {
-    Write-Error `$_.Exception.Message
-}
+        $setupContent = @"
+    try {
+        & "$pyScriptsFolder/install-python.ps1"
+        & "$pyScriptsFolder/setup-venv.ps1"
+        & "$aliasesFolder/ue-check-engine-installation.exe"
+    }
+    catch {
+        Write-Error `$_.Exception.Message
+    }
 "@
 
-# Display what will be written
-Write-Host "`nSetup.ps1 will be created at:" -ForegroundColor Cyan
-Write-Host $outputFile -ForegroundColor Yellow
-Write-Host "`nWith the following content:" -ForegroundColor Cyan
-Write-Host $setupContent -ForegroundColor Gray
+        Write-Host "`nSetup.ps1 will be created at:" -ForegroundColor Cyan
+        Write-Host $outputFile -ForegroundColor Yellow
+        Write-Host "`nWith the following content:" -ForegroundColor Cyan
+        Write-Host $setupContent -ForegroundColor Gray
 
-$confirmation = Read-Host "`nDo you want to proceed? (Y/N)"
-if ($confirmation -ne 'Y' -and $confirmation -ne 'y') {
-    Write-Host "Operation cancelled." -ForegroundColor Yellow
-    exit
+        $confirmation = Read-Host "`nDo you want to proceed? (Y/N)"
+        if ($confirmation -ne 'Y' -and $confirmation -ne 'y') {
+            Write-Host "Operation cancelled." -ForegroundColor Yellow
+            return
+        }
+
+        # Write the file
+        try {
+            Set-Content -Path $outputFile -Value $setupContent -Encoding UTF8
+            Write-Host "`nSetup.ps1 has been successfully created!" -ForegroundColor Green
+            Write-Host "Location: $outputFile" -ForegroundColor Green
+        }
+        catch {
+            Write-Error "Failed to create Setup.ps1: $_"
+            exit 1
+        }
+    } else {
+        Write-Host "`nSetup.ps1 already exists at $outputFile. Skipping creation." -ForegroundColor Yellow
+    }
 }
 
-# Write the file
-try {
-    Set-Content -Path $outputFile -Value $setupContent -Encoding UTF8
-    Write-Host "`nSetup.ps1 has been successfully created!" -ForegroundColor Green
-    Write-Host "Location: $outputFile" -ForegroundColor Green
-}
-catch {
-    Write-Error "Failed to create Setup.ps1: $_"
-    exit 1
-}
-
-$configFilePath = Join-Path -Path $projectRoot -ChildPath "Config/PyScripts/config.ini"
-if (-not (Test-Path -Path $configFilePath)) {
-    Write-Host "`nConfig file not found at $configFilePath. Creating a default config.ini..." -ForegroundColor Cyan
-    $defaultConfigContent = @"
+function Write-ConfigFile {
+    $configFilePath = Join-Path -Path $projectRoot -ChildPath "Config/PyScripts/config.ini"
+    if (-not (Test-Path -Path $configFilePath)) {
+        Write-Host "`nConfig file not found at $configFilePath. Creating a default config.ini..." -ForegroundColor Cyan
+        $defaultConfigContent = @"
 [Project]
 ; BuildgraphPath = Scripts\Build\BuildGraph\BuildGraph.xml
 ; BuildgraphSharedProperties = Publish_Directory=Saved/LocalBuilds
@@ -79,60 +85,89 @@ if (-not (Test-Path -Path $configFilePath)) {
 ; BuildgraphSharedStoragePath = \\nas\jenkins\UE-BuildGraph
 "@
 
-    Set-Content -Path $configFilePath -Value $defaultConfigContent -Encoding UTF8
-    Write-Host "`nconfig.ini has been successfully created!" -ForegroundColor Green
-    Write-Host "Location: $configFilePath" -ForegroundColor Green
+        Set-Content -Path $configFilePath -Value $defaultConfigContent -Encoding UTF8
+        Write-Host "`nconfig.ini has been successfully created!" -ForegroundColor Green
+        Write-Host "Location: $configFilePath" -ForegroundColor Green
+    }
+    else {
+        Write-Host "`nConfig file already exists at $configFilePath. Skipping creation." -ForegroundColor Yellow
+    }
 }
 
-$executeConfirmation = Read-Host "`nDo you want to create the CompileAndRunEditor.ps1 file? (Y/N)"
-if ($executeConfirmation -eq 'Y' -or $executeConfirmation -eq 'y') {
+function Write-CompileAndRunEditorFile {
     $compileAndRunEditorPath = Join-Path -Path $projectRoot -ChildPath "CompileAndRunEditor.ps1"
-    $compileAndRunEditorContent = @"
-try {
-    & "$aliasesFolder/ue-close-editor.exe"
-    & "$aliasesFolder/ue-compile-editor.exe"
-    & "$aliasesFolder/ue-run-editor.exe"
-}
-catch {
-    Write-Error `$_.Exception.Message
-}
-"@
 
-    Set-Content -Path $compileAndRunEditorPath -Value $compileAndRunEditorContent -Encoding UTF8
-    Write-Host "`nCompileAndRunEditor.ps1 has been successfully created!" -ForegroundColor Green
-    Write-Host "Location: $compileAndRunEditorPath" -ForegroundColor Green
-}
-
-$executeConfirmation = Read-Host "`nDo you want to create a script example about how to run a buildgraph task? (Y/N)"
-if ($executeConfirmation -eq 'Y' -or $executeConfirmation -eq 'y') {
-    $buildGraphScriptDirPath = Join-Path -Path $projectRoot -ChildPath "Scripts/Project"
-    $buildGraphScriptPath = Join-Path -Path $buildGraphScriptDirPath -ChildPath "BuildgraphTask.ps1"
-
-    New-Item -ItemType Directory -Force -Path $buildGraphScriptDirPath
-
-    $pyScriptsFolder = [System.IO.Path]::GetRelativePath($buildGraphScriptDirPath, $scriptDir)
-    $pyScriptsFolder = $pyScriptsFolder -replace '^\\.\\', '' -replace '\\', '/'
-
-    $buildgraphSampleContent = @"
-    & "$aliasesFolder/ue-run-buildgraph.exe" --target "Buildgraph Task Name" -set:Clean=True -set:Targets=MyGameClient+MyGameServer -set:TargetConfigurations=Development+Shipping
-"@
-
-    Set-Content -Path $buildGraphScriptPath -Value $buildgraphSampleContent -Encoding UTF8
-    Write-Host "`BuildgraphTask.ps1 has been successfully created!" -ForegroundColor Green
-    Write-Host "Location: $buildGraphScriptPath" -ForegroundColor Green
-}
-
-$executeConfirmation = Read-Host "`nDo you want to execute Setup.ps1 now? (Y/N)"
-if ($executeConfirmation -eq 'Y' -or $executeConfirmation -eq 'y') {
-    Write-Host "`nExecuting Setup.ps1..." -ForegroundColor Cyan
+    if (-not (Test-Path -Path $compileAndRunEditorPath)) {
+        $executeConfirmation = Read-Host "`nDo you want to create the CompileAndRunEditor.ps1 file? (Y/N)"
+        if ($executeConfirmation -eq 'Y' -or $executeConfirmation -eq 'y') {
+            
+            $compileAndRunEditorContent = @"
     try {
-        & $outputFile
+        & "$aliasesFolder/ue-close-editor.exe"
+        & "$aliasesFolder/ue-compile-editor.exe"
+        & "$aliasesFolder/ue-run-editor.exe"
     }
     catch {
-        Write-Error "Failed to execute Setup.ps1: $_"
-        exit 1
+        Write-Error `$_.Exception.Message
+    }
+"@
+
+            Set-Content -Path $compileAndRunEditorPath -Value $compileAndRunEditorContent -Encoding UTF8
+            Write-Host "`nCompileAndRunEditor.ps1 has been successfully created!" -ForegroundColor Green
+            Write-Host "Location: $compileAndRunEditorPath" -ForegroundColor Green
+        }
+    } else {
+        Write-Host "`nCompileAndRunEditor.ps1 already exists at $compileAndRunEditorPath. Skipping creation." -ForegroundColor Yellow
     }
 }
-else {
-    Write-Host "Setup.ps1 was not executed. You can run it manually later." -ForegroundColor Yellow
+
+function Write-BuildgraphFile {
+    $buildGraphScriptDirPath = Join-Path -Path $projectRoot -ChildPath "Scripts/Project"
+    if (-not (Test-Path -Path $buildGraphScriptDirPath)) {
+        $executeConfirmation = Read-Host "`nDo you want to create a Buildgraph script example? (Y/N)"
+        
+        if ($executeConfirmation -eq 'Y' -or $executeConfirmation -eq 'y') {        
+            $executeConfirmation = Read-Host "`nDo you want to create a script example about how to run a buildgraph task? (Y/N)"
+            $buildGraphScriptPath = Join-Path -Path $buildGraphScriptDirPath -ChildPath "BuildgraphTask.ps1"
+
+            New-Item -ItemType Directory -Force -Path $buildGraphScriptDirPath
+
+            $pyScriptsFolder = [System.IO.Path]::GetRelativePath($buildGraphScriptDirPath, $scriptDir)
+            $pyScriptsFolder = $pyScriptsFolder -replace '^\\.\\', '' -replace '\\', '/'
+
+            $buildgraphSampleContent = @"
+        & "$aliasesFolder/ue-run-buildgraph.exe" --target "Buildgraph Task Name" -set:Clean=True -set:Targets=MyGameClient+MyGameServer -set:TargetConfigurations=Development+Shipping
+"@
+
+        Set-Content -Path $buildGraphScriptPath -Value $buildgraphSampleContent -Encoding UTF8
+        Write-Host "`BuildgraphTask.ps1 has been successfully created!" -ForegroundColor Green
+        Write-Host "Location: $buildGraphScriptPath" -ForegroundColor Green
+        }
+    } else {
+        Write-Host "`nBuildgraph script directory already exists at $buildGraphScriptDirPath. Skipping creation." -ForegroundColor Yellow
+    }
 }
+
+function Invoke-Setup {
+    $executeConfirmation = Read-Host "`nDo you want to execute Setup.ps1 now? (Y/N)"
+    if ($executeConfirmation -eq 'Y' -or $executeConfirmation -eq 'y') {
+        Write-Host "`nExecuting Setup.ps1..." -ForegroundColor Cyan
+        try {
+            $setupFile = Join-Path -Path $projectRoot -ChildPath "Setup.ps1"
+            & $setupFile
+        }
+        catch {
+            Write-Error "Failed to execute Setup.ps1: $_"
+            exit 1
+        }
+    }
+    else {
+        Write-Host "Setup.ps1 was not executed. You can run it manually later." -ForegroundColor Yellow
+    }
+}
+
+Write-SetupFile
+Write-ConfigFile
+Write-CompileAndRunEditorFile
+Write-BuildgraphFile
+Invoke-Setup
