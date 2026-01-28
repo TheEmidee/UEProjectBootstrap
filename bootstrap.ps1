@@ -73,13 +73,13 @@ function Write-SetupFile {
 
     if ( -not ( Test-Path -Path $outputFile ) ) {
         $setupContent = @"
-    try {
-        & "$bootstrapPythonFolder/install-python.ps1"
-        & "$bootstrapPythonFolder/setup-venv.ps1"
-        & "$pythonScriptsFolder/ue-check-engine-installation.exe"
-    }
-    catch {
-        Write-Error `$_.Exception.Message
+try {
+    & "$bootstrapPythonFolder/install-python.ps1"
+    & "$bootstrapPythonFolder/setup-venv.ps1"
+    & "$pythonScriptsFolder/ue-check-engine-installation.exe"
+}
+catch {
+    Write-Error `$_.Exception.Message
     }
 "@
 
