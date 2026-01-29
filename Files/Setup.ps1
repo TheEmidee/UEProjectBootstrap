@@ -10,5 +10,5 @@ try {
     & "$pythonScriptsFolder/ue-check-engine-installation.exe"
 }
 catch {
-    Write-Error `$_.Exception.Message
+    Write-Error $_.Exception.Message
 }

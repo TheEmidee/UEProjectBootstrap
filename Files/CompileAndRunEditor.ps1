@@ -4,5 +4,5 @@ try {
     & "$pythonScriptsFolder/ue-run-editor.exe"
 }
 catch {
-    Write-Error `$_.Exception.Message
+    Write-Error $_.Exception.Message
 }
