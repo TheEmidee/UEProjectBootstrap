@@ -108,7 +108,6 @@ function Write-BuildgraphFile {
         $executeConfirmation = Read-Host "`nDo you want to create a Buildgraph script example? (Y/N)"
         
         if ($executeConfirmation -eq 'Y' -or $executeConfirmation -eq 'y') {        
-            $executeConfirmation = Read-Host "`nDo you want to create a script example about how to run a buildgraph task? (Y/N)"
             $buildGraphScriptPath = Join-Path -Path $buildGraphScriptDirPath -ChildPath "BuildgraphTask.ps1"
 
             New-Item -ItemType Directory -Force -Path $buildGraphScriptDirPath
