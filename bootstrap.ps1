@@ -56,7 +56,11 @@ function Copy-File($sourceFileName, $destinationFolder, $force) {
 
 $bootStrapFolder = Get-RelativePath $scriptDir
 $bootstrapPythonFolder = Convert-Path ( Join-Path -Path $bootStrapFolder -ChildPath "Python" )
+
 $pythonAbsoluteFolder = Convert-Path ( Join-Path -Path $projectRoot -ChildPath "Scripts/Python" )
+if ( -not ( Test-Path -Path $pythonAbsoluteFolder ) ) {
+    New-Item -ItemType Directory -Force -Path $pythonAbsoluteFolder | Out-Null
+}
 
 $pythonRelativeFolder = Get-RelativePath $pythonAbsoluteFolder
 $pythonScriptsFolder = Convert-Path ( Join-Path -Path $pythonRelativeFolder -ChildPath ".venv/Scripts" )
