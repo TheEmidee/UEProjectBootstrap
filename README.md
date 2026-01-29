@@ -17,11 +17,13 @@ Bootstrap the project:
    - `Config.ini` in `Config/PyScripts`
    - `CompileAndRunEditor.ps1` also at the root
    - `BuildgraphTask.ps1` in the folder `Scripts/Project`
+   - `.pre-commit-config.yaml` at the root of the project
 - Execute `Setup.ps1` to:
    1. check if python is installed, and install it if not
    2. create the python virtual environment
-   3. install the python packages [UEPyScripts](https://github.com/TheEmidee/UEPyScripts) and [PyGameDevTools](https://github.com/TheEmidee/PyGameDevTools).
-   3. call the script `ue-check-engine-installation`
+   3. install the python packages [UEPyScripts](https://github.com/TheEmidee/UEPyScripts), [PyGameDevTools](https://github.com/TheEmidee/PyGameDevTools) and [pre-commit](https://pre-commit.com/index.html)
+   4. install the pre-commit hooks
+   5. call the script `ue-check-engine-installation`
 - Execute `CompileAndRunEditor.ps1` to compile your C++ code and run the editor when done !
 - If you use buildgraph in your project:
    1. Uncomment the buildgraph properties in `Config/PyScripts/config.ini` and adapt to your project
