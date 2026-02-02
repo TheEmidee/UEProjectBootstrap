@@ -6,6 +6,8 @@ try {
     & "$bootstrapPythonFolder/setup-venv.ps1"
     Write-Host "Installing pre-commit hooks..." -ForegroundColor Cyan
     pre-commit install
+    Write-Host "Running python setup scripts..." -ForegroundColor Cyan
+    & "$bootstrapPythonFolder/run-setup-scripts.ps1"
     Write-Host "Checking engine installation..." -ForegroundColor Cyan
     & "$pythonScriptsFolder/ue-check-engine-installation.exe"
 }
