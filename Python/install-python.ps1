@@ -15,5 +15,12 @@ function Install-Python
     uv python install $PYTHON_VERSION --reinstall
 }
 
+function Install-PreCommit
+{
+    Write-Host "Installing Pre-Commit..." -ForegroundColor Cyan
+    uv tool install pre-commit --with pre-commit-uv
+}
+
 Install-UV
 Install-Python
+Install-PreCommit
