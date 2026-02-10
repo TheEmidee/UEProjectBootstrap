@@ -12,9 +12,14 @@ Write-Host "Setting up Python virtual environment in $vEnvFolderPath" -Foregroun
 Push-Location $pythonFolder
 
 try {
-    uv python pin $PYTHON_VERSION
+    # 1. Only create the venv if the directory doesn't exist
+    if (-not (Test-Path ".venv")) {
+        Write-Host "Creating virtual environment..." -ForegroundColor Cyan
+        uv venv --python $PYTHON_VERSION
+    } else {
+        Write-Host "✓ Virtual environment already exists." -ForegroundColor Green
+    }
 
-    uv venv --python $PYTHON_VERSION --clear
     $pipArgs = @("-r", $requirementsFilePath)
 
     if (Test-Path $additionalrequirementsFilePath) {
