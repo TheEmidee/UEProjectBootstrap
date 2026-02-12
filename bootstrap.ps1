@@ -65,7 +65,7 @@ if ( -not ( Test-Path -Path $pythonAbsoluteFolder ) ) {
 $pythonRelativeFolder = Get-RelativePath $pythonAbsoluteFolder
 $pythonScriptsFolder = Convert-Path ( Join-Path -Path $pythonRelativeFolder -ChildPath ".venv/Scripts" )
 
-function Setup-PythonFolder {
+function Initialize-PythonFolder {
     
     if (-not (Test-Path -Path $pythonAbsoluteFolder)) {
         Write-Host "`nCreating Python folder at $pythonAbsoluteFolder..." -ForegroundColor Cyan
@@ -132,6 +132,14 @@ function Write-PreCommitConfig {
     Copy-File "Files/.pre-commit-config.yaml" $projectRoot $true
 }
 
+function Install-Python {
+    Write-Host "Installing Python..." -ForegroundColor Cyan
+    & "$scriptDir/Python/install-python.ps1"
+
+    Write-Host "Setup Python virtual environment..." -ForegroundColor Cyan
+    & "$scriptDir/Python/setup-venv.ps1"
+}
+
 function Invoke-Setup {
     $executeConfirmation = Read-Host "`nDo you want to execute Setup.ps1 now? (Y/N)"
     if ($executeConfirmation -eq 'Y' -or $executeConfirmation -eq 'y') {
@@ -150,10 +158,17 @@ function Invoke-Setup {
     }
 }
 
-Setup-PythonFolder
+function Invoke-PythonBootstrapScripts {
+    Write-Host "Execute python bootstrap scripts..." -ForegroundColor Cyan
+    & "$scriptDir/Python/run-bootstrap-scripts.ps1"
+}
+
+Initialize-PythonFolder
 Write-SetupFile
 Write-ConfigFile
 Write-CompileAndRunEditorFile
 Write-BuildgraphFile
 Write-PreCommitConfig
+Install-Python
+Invoke-PythonBootstrapScripts
 Invoke-Setup
