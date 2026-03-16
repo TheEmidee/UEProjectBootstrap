@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Added
 
-- Paramneter `BuildMachine` in `Setup.ps1` to prevent installing pre-commit hooks and run python setup scripts
+- Parameter `BuildMachine` in `Setup.ps1` to prevent installing pre-commit hooks and run python setup scripts
+- Created separate script for pre-commit installation
 
 ## [1.0.0] - 2026-02-15
 
