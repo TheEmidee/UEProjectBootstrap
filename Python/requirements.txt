@@ -1,3 +1,3 @@
-UEPyScripts==1.2.3
+UEPyScripts
 GameDevTools
 JenkinsfileGenerator
