@@ -11,7 +11,7 @@ try {
 
     if ($BuildMachine -eq $false) {
         Write-Host "Installing pre-commit hooks..." -ForegroundColor Cyan
-        pre-commit install
+        & "$bootstrapPythonFolder/install-pre-commit.ps1"
 
         Write-Host "Running python setup scripts..." -ForegroundColor Cyan
         & "$bootstrapPythonFolder/run-setup-scripts.ps1"
