@@ -1,0 +1,81 @@
+pipeline_name: "@projectName@_^BLACKBOARD_DATA.build_type^"
+customization_folder: "Customization"
+project:
+  name: "@projectName@"
+jenkins:
+  default_node_names: ""
+  workspace_suffix: ""
+features:
+  properties:
+    items:
+      - "disableConcurrentBuilds( abortPrevious: true )"
+      - "buildDiscarder( logRotator( numToKeepStr: '10' ) )"
+      - "githubProjectProperty(displayName: '', projectUrlStr: 'https://github.com/REPLACE_BY_GITHUB_COMPANY/REPLACE_BY_GITHUB_REPOSITORY/')"
+  slack_notifications:
+    channel: "#REPLACE_BY_SLACK_CHANNEL"
+    message_template: " : ${env.JOB_NAME} - ${env.CHANGE_BRANCH} #${env.BUILD_NUMBER} (<${env.BUILD_URL}|Open>)"
+  git:
+    use_simple_checkout: false
+    checkout:
+      branch_name: "refs/heads/^BLACKBOARD_DATA.branch_name^"
+      extensions:
+        CheckoutOption:
+          timeout: 120
+        SubmoduleOption:
+          disableSubmodules: false
+          parentCredentials: true
+          recursiveSubmodules: true
+          reference: ""
+          timeout: 120
+          trackingSubmodules: false
+        GitLFSPull:
+          enabled: true
+      user_remote_config:
+        credentials_id:
+          id: "REPLACE_BY_CREDENTIALS_ID"
+          url: "git@github.com:REPLACE_BY_GITHUB_COMPANY/REPLACE_BY_GITHUB_REPOSITORY.git"
+  python:
+    venv_activation_script_path: "./Setup.ps1"
+    venv_folder: "Scripts/Python/.venv"
+  unreal:
+    project:
+      uproject_path: "../../../../@projectName@.uproject"
+    buildgraph:
+      target: "BuildAndTest @projectName@"
+      properties:
+        Skip_Test_EditorBoot: "True"
+        Skip_Test_TargetBoot: "True"
+        Clean: "True"
+        Targets: "REPLACE_BY_BUILDGRAPH_TARGETS"
+        TargetConfigurations: "^BLACKBOARD_DATA.build_type^"
+        With_Publish: "False"
+        Publish_Directory: "REPLACE_BY_PUBLISH_DIRECTORY/@projectName@/^BLACKBOARD_DATA.build_type^/WIP"
+        CI-BuildId: "${env.BUILD_NUMBER}"
+      pre_tasks:
+        - 'pwsh "Scripts/Project/CI/CI_NetUse.ps1"'
+    cleanup_after_build:
+      enabled: true
+      additional_node_name: "Win64"
+  archive:
+    rotate_archives:
+      enabled: true
+      directory_path: "REPLACE_BY_PUBLISH_DIRECTORY/@projectName@/^BLACKBOARD_DATA.build_type^/WIP"
+      keep_count: -1
+      folder_output_file_name: "${env.WORKSPACE}/Saved/Temp/latest_archive_^BLACKBOARD_DATA.build_type^.txt"
+      slack:
+        enabled: true
+        channel: "#REPLACE_BY_SLACK_CHANNEL"
+        message_template: "New ^BLACKBOARD_DATA.build_type^ build available : ${foldername}"
+    upload_archives:
+      enabled: true
+      bucket_name: "REPLACE_BY_S3_BUCKET_NAME"
+      region: "REPLACE_BY_S3_REGION"
+      access_key: "REPLACE_BY_S3_ACCESS_KEY"
+      secret_key: "REPLACE_BY_S3_SECRET_KEY"
+      destination_folder: "^BLACKBOARD_DATA.build_type^/${params.DRM}"
+      keep_count: -1
+      output_file_name: "${env.WORKSPACE}/Saved/Temp/uploaded_files_^BLACKBOARD_DATA.build_type^.txt"
+      slack:
+        enabled: true
+        channel: "REPLACE_BY_SLACK_CHANNEL"
+        message_template: "<${url}|${filename}>"

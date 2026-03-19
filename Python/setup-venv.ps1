@@ -30,11 +30,8 @@ try {
 
     uv pip install @pipArgs --link-mode=copy
 
-    Write-Host "`nSetup complete!" -ForegroundColor Green
-    Write-Host "Virtual environment is now active." -ForegroundColor Green
+    Write-Host "`nSetup complete! Virtual environment is now active" -ForegroundColor Green
 
 } finally {
-    # This block runs no matter what happens in the 'try' block
     Pop-Location
-    Write-Host "`nReturned to original directory." -ForegroundColor Gray
 }

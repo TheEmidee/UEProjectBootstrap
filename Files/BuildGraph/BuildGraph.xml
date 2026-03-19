@@ -1,0 +1,502 @@
+<?xml version='1.0' ?>
+<BuildGraph xmlns="http://www.epicgames.com/BuildGraph" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.epicgames.com/BuildGraph ../../../../Engine/Build/Graph/Schema.xsd">
+    <!-- =============================================================================== -->
+    <!-- OPTIONS -->
+    <!-- =============================================================================== -->
+    
+    <!-- Additional options -->
+    <Option Name="Clean" Restrict="true|false" DefaultValue="false" Description="Clean the project before compiling / packaging"/>
+    <Option Name="With_Publish" Restrict="true|false" DefaultValue="$(IsBuildMachine)" Description="Publish packaged builds to the builds folder on the network"/>
+    
+    <!-- Skip options -->
+    <Option Name="Skip_Compile" DefaultValue="false" Description="Whether to skip building" />
+    <Option Name="Skip_Cook" DefaultValue="false" Description="Whether to skip cooking and packaging" />
+    <Option Name="Skip_Package" DefaultValue="false" Description="Whether to skip packaging" />
+    
+    <!-- Compilation options -->
+    <Option Name="With_Compile_SyncBinariesIntoStageDirectory" Restrict="true|false" DefaultValue="false" Description="Copies the files created by the compilation to the staging directory" />
+    <Option Name="Skip_Compile_UnityBuild" Restrict="true|false" DefaultValue="false" Description="Forces a IWYU with no unity build and no PCH compilation" />
+
+    <!-- Cook Options -->
+    <Option Name="Cook_ForceIterativeCooking" Restrict="true|false" DefaultValue="false" Description="Set to true to force to use the iterativecooking flag" />
+    <Option Name="Cook_ForceNoIterativeCooking" Restrict="true|false" DefaultValue="false" Description="Set to true to force to NOT use the iterativecooking flag" />
+    <Option Name="Cook_Compress" Restrict="true|false" DefaultValue="true" Description="Set to true to compress cooked content" />
+    <Option Name="Cook_DDCNoShared" Restrict="true|false" DefaultValue="false" Description="Set to true to disable access to the DDC when cooking / packaging content" />
+
+    <!-- Stage Options -->
+    <Option Name="Package_Publish_WithZip" Restrict="true|false" DefaultValue="false" Description="Zips the output of the packaging task" />
+    <Option Name="Package_Publish_Clean" Restrict="true|false" DefaultValue="false" Description="Cleans the publish directory before publishing" />
+    
+    <!-- Publish Options -->
+    <Option Name="Publish_Directory" DefaultValue="$(ProjectDir)/Saved/LocalBuilds" Description="The folder under which to copy all of the packaged builds" />
+
+    <!-- Validation Options -->
+    <Option Name="Skip_Validation_All" Restrict="true|false" DefaultValue="false" Description="Set to true to skip all data validation (Naming convention, map check, etc...)"/>
+    <Option Name="Skip_Validation_NamingConvention" Restrict="true|false" DefaultValue="false" Description=""/>
+    <Option Name="Skip_Validation_MapCheck" Restrict="true|false" DefaultValue="false" Description=""/>
+    <Option Name="Skip_Validation_CheckNoRedirectors" Restrict="true|false" DefaultValue="false" Description=""/>
+    <Option Name="Skip_Validation_CompileAllBlueprints" Restrict="true|false" DefaultValue="false" Description=""/>
+    <Option Name="Skip_Validation_DataValidation" Restrict="true|false" DefaultValue="false" Description=""/>
+    <Option Name="Skip_Validation_StaticAnalysis" Restrict="true|false" DefaultValue="false" Description=""/>
+    <Option Name="Validation_NamingConvention_Paths" Restrict=".*" DefaultValue="/Game" Description="List of paths to validate in the naming convention validation commandlet, separated by +"/>
+    <Option Name="Validation_CompileAllBlueprints_IgnoreFolders" Restrict=".*" DefaultValue="" Description="List of paths to ignore when compiling blueprints, separated by ,"/>
+    <Option Name="Validation_MapCheck_Maps" Restrict=".*" DefaultValue="" Description="List of maps to check, separated by ,"/>
+
+    <!-- Run Options -->
+
+    <Include Script="Inc/PlatformOptions.xml" />
+
+    <!-- Other Options -->
+    <Option Name="PreNodeName" DefaultValue="$(ProjectName)" Description="String to prepend to node name"/>
+    <Option Name="PreLabelName" DefaultValue="" Description="String to prepend to label name"/>
+    <Property Name="PreNodeName" Value="$(PreNodeName) " If="'$(PreNodeName)' != ''"/>
+    <Property Name="PreLabelName" Value="$(PreLabelName) " If="'$(PreLabelName)' != ''"/>
+
+    <Option Name="MapIniSection" DefaultValue="" Restrict="" Description="MapIniSection argument to pass when cooking" />
+
+    <!-- Does this project require a dedicated server for testing? (not currently implemented!)-->
+    <Option Name="DedicatedServer" DefaultValue="false" Description="Project uses a dedicated server" />
+
+    <!-- =============================================================================== -->
+    <!-- ENVIRONMENT VARIABLES -->
+    <!-- =============================================================================== -->
+    <EnvVar Name="UE_MULTICOOK_PROCESS_COUNT"/>
+
+    <!-- =============================================================================== -->
+    <!-- PROPERTIES -->
+    <!-- =============================================================================== -->
+    <Property Name="UE_MULTICOOK_PROCESS_COUNT" Value="1" If="'$(UE_MULTICOOK_PROCESS_COUNT)' == ''" />
+
+    <Property Name="ProjectArgument" Value="-Project=&quot;$(ProjectFile)&quot;" />
+    <Property Name="LogsDirectory" Value="$(ProjectDir)/Saved/Logs" />
+    <Property Name="CommandletErrorLevel" Value="1" />
+    <Property Name="CommandletErrorLevel" Value="4" If="$(IsBuildMachine)"/>
+    <Property Name="CommandletCommonArguments" Value="-SCCProvider=None -log -nopause -unattended -nosplash -nofastbuildcontroller" />
+    
+    <!-- If the user didn't supply a TargetName then use the ProjectName -->
+    <Property Name="TargetName" Value="$(ProjectName)" If="'$(TargetName)' == ''"/>
+    <Property Name="EditorTargetName" Value="$(ProjectName)Editor" If="'$(EditorTargetName)' == ''"/>
+    
+    <!-- Detect the type of the client based on the target name -->
+    <Property Name="TargetType" Value="Game" />
+    <Property Name="TargetType" Value="Client" If="Contains('$(TargetName)', 'Client')" />
+
+    <Include Script="Inc/CommonProperties.xml" />
+    <Include Script="Inc/PathSettings.xml" />
+    <Include Script="Inc/GauntletSettings.xml" />
+    <Include Script="Inc/AutomationTests.xml" />
+
+    <!-- Compilation Properties -->
+    <Property Name="Compile_DefaultArguments" Value="-NoHotReloadFromIDE" />
+    <Property Name="Compile_DefaultArguments" Value="$(Compile_DefaultArguments) -iwuy -NoPCH -NoSharedPCH -DisableUnity -ubtargs=&quot;-DisableUnity&quot;" If="$(Skip_Compile_UnityBuild)" />
+    <!--
+        <Property Name="Compile_DefaultArguments" Value="$(Compile_DefaultArguments) -Timing" If="$(Compile_WithTiming)" />
+        <Property Name="Compile_DefaultArguments" Value="$(Compile_DefaultArguments) -Tracing -TimingFile=F:/timing.json -Verbose" If="$(Compile_WithTracing)" /> 
+    -->
+
+    <!-- These properties will be filled in with nodes that are generated based on options -->
+    <Property Name="GeneratedToolNodes" Value="" />
+    <Property Name="GeneratedDataValidationNodes" Value="" />
+    <Property Name="GeneratedEditorTestNodes" Value="" />
+    <Property Name="GeneratedTargetNodes" Value="" />
+    <Property Name="GeneratedTargetTestNodes" Value="" />
+    <Property Name="GeneratedAdditionalNodes" Value="" />
+    <Property Name="GeneratedCookRequirements" Value="" />
+    
+    <Property Name="GeneratedCompileAllTargetsNodes" Value="" />
+    <Property Name="GeneratedCompileAllGameTargetsNodes" Value="" />
+    <Property Name="GeneratedCompileAllClientTargetNodes" Value="" />
+    <Property Name="GeneratedCompileAllServerTargetNodes" Value="" />
+
+    <Property Name="GeneratedCookAllTargetsNodes" Value="" />
+    <Property Name="GeneratedCookAllGameTargetsNodes" Value="" />
+    <Property Name="GeneratedCookAllClientTargetNodes" Value="" />
+    <Property Name="GeneratedCookAllServerTargetNodes" Value="" />
+
+    <Property Name="GeneratedPackageAllTargetsNodes" Value="" />
+    <Property Name="GeneratedPackageAllGameTargetsNodes" Value="" />
+    <Property Name="GeneratedPackageAllClientTargetNodes" Value="" />
+    <Property Name="GeneratedPackageAllServerTargetNodes" Value="" />
+
+    <ForEach Name="EditorPlatform" Values="$(EditorPlatforms)" Separator="+">
+        <!-- Set Agent Types -->
+        <Property Name="HostAgentType" Value="$(EditorPlatform)" />
+        <!-- Use incremental agents for building? -->
+        <Property Name="TestAgentType" Value="$(EditorPlatform)" />
+
+        <Property Name="PlatformEditorTestNodes" Value="" />
+
+        <Property Name="PlatformEditorPlatformCompileNodeName" Value="$(PreNodeName)Compile Editor $(EditorPlatform)" />
+
+         <!-- Is this editor explicitely requested? (as opposed to being required due to target platforms) -->
+        <Property Name="IsEditorRequested" Value="True" />
+        <!-- ContainsItem('$(EditorPlatforms)', '$(EditorPlatform)', '+')" /> -->
+
+        <Agent Name="Compile $(EditorTargetName) $(EditorPlatform)" Type="$(HostAgentType)">
+            <Node Name="$(PlatformEditorPlatformCompileNodeName)">
+                <Compile Target="$(EditorTargetName)" Project="$(ProjectFile)" Platform="$(EditorPlatform)" Clean="$(Clean)" Configuration="Development" Arguments="$(Compile_DefaultArguments) -log=$(LogsDirectory)/Compile_Editor_Development_$(EditorPlatform).log" />
+            </Node>
+            
+            <Property Name="GeneratedToolNodes" Value="$(GeneratedToolNodes);$(PlatformEditorPlatformCompileNodeName)" If="!$(Skip_Compile)" />
+        </Agent>
+
+        <Agent Name="Test $(ProjectName)Editor $(EditorPlatform)" Type="$(TestAgentType)">
+            <!-- Prerequisites for the editor test to run -->
+            <Property Name="TestPrerequisites" Value="$(GeneratedToolNodes)"/>
+            <!-- Declare a boot test for the editor-->
+            <Property Name="PlatformBootTestNodeName" Value="$(PreNodeName)Editor $(EditorPlatform) Test=BootTest" />
+
+            <Expand 
+                Name="TestCommand" 
+                NodeName="$(PlatformBootTestNodeName)" 
+                NodeRequires="$(TestPrerequisites)" 
+                TestName="UE.EditorBootTest" 
+                OutputFragmentPath="$(EditorPlatform)Editor" 
+                GauntletTestArgs="$(GauntletEditorTestArgs)" 
+                />
+            
+            <!-- Link the boot test in to the prerequisites and generated nodes if its enabled-->
+            <Do If="!$(Skip_Test_EditorBoot)">
+                <Property Name="TestPrerequisites" Value="$(TestPrerequisites);$(PlatformBootTestNodeName)" />
+            </Do>
+
+            <!-- Now generate a test node for each editor test in the list-->
+            <ForEach Name="TestNameAndArguments" Values="$(EditorTestList)" Separator="+">
+                <Property Name="TestName" Value="" />
+                <Property Name="TestArguments" Value="" />
+                <Expand 
+                    Name="ParseTestNameAndArguments" 
+                    List="$(TestNameAndArguments)" 
+                    />
+
+                <Property Name="TestNameTitle" Value="$(TestName)"/>
+                <Expand Name="SanitizeTestNameTitle"/>
+
+                <Property Name="TestNodeName" Value="$(PreNodeName)Editor $(EditorPlatform) Test=$(TestNameTitle)" />
+
+                <Expand 
+                    Name="TestCommand" 
+                    NodeName="$(TestNodeName)" 
+                    NodeRequires="$(TestPrerequisites)" 
+                    TestName="$(TestName)" 
+                    OutputFragmentPath="$(EditorPlatform)Editor" 
+                    GauntletTestArgs="$(TestArguments) $(GauntletEditorTestArgs)" 
+                    />
+
+                <!-- Add each test node to our generated list -->
+                <Property Name="PlatformEditorTestNodes" Value="$(PlatformEditorTestNodes);$(TestNodeName)" />
+            </ForEach>
+
+            <!-- If this editor was requested (as opposed to being required due to target platforms) then link in the test nodes and set up labels -->
+            <Do If="ContainsItem('$(EditorPlatforms)', '$(EditorPlatform)', '+') and !ContainsItem('$(EditorPlatformsToSkipTests)', '$(EditorPlatform)', '+')">
+                <Property Name="GeneratedEditorTestNodes" Value="$(GeneratedEditorTestNodes);$(PlatformBootTestNodeName)" If="!$(Skip_Test_EditorBoot)" />
+                <Property Name="GeneratedEditorTestNodes" Value="$(GeneratedEditorTestNodes);$(PlatformEditorTestNodes)" />
+            </Do>
+        </Agent>
+
+        <!-- Data Validation agents -->
+        <Agent Name="Naming Convention Validation $(EditorPlatform)" Type="$(HostAgentType)">
+            <Node Name="Naming Convention Validation $(EditorPlatform)" Requires="$(PlatformEditorPlatformCompileNodeName)">
+                <Commandlet Name="NamingConventionValidation" ErrorLevel="$(CommandletErrorLevel)" Project="$(ProjectFile)" Arguments="$(CommandletCommonArguments) -Paths=$(Validation_NamingConvention_Paths) -log=NamingConventionValidation.log $(Test_DataValidationArguments)" />
+                <GenerateJenkinsCompatibleWarningsFile LogFile="$(LogsDirectory)/NamingConventionValidation.log" Category="NamingConvention" OutputFile="$(Test_WarningsDirectory)/NamingConventionValidation.txt" Append="False" If="$(IsBuildMachine)" WarningMessagesToIgnoreFile="$(ProjectDir)/Scripts/Build/Buildgraph/WarningMessagesToIgnore.txt" />
+            </Node>
+        </Agent>
+        <Agent Name="Data Validation $(EditorPlatform)" Type="$(HostAgentType)">
+            <Node Name="Data Validation $(EditorPlatform)" Requires="$(PlatformEditorPlatformCompileNodeName)">
+                <Commandlet Name="DVEDataValidation" ErrorLevel="$(CommandletErrorLevel)" Project="$(ProjectFile)" Arguments="$(CommandletCommonArguments) -log=DataValidation.log $(Test_DataValidationArguments)" />
+                <GenerateJenkinsCompatibleWarningsFile LogFile="$(LogsDirectory)/DataValidation.log" Category="DataValidation" OutputFile="$(Test_WarningsDirectory)/DataValidation.txt" Append="False" If="$(IsBuildMachine)" WarningMessagesToIgnoreFile="$(ProjectDir)/Scripts/Build/Buildgraph/WarningMessagesToIgnore.txt" />
+            </Node>
+        </Agent>
+        <Agent Name="Check All Blueprints $(EditorPlatform)" Type="$(HostAgentType)">
+            <Node Name="Check All Blueprints $(EditorPlatform)" Requires="$(PlatformEditorPlatformCompileNodeName)">
+                <!-- CompileAllBlueprints commandlet is special as its exit code is the number of errors. 
+                On Jenkins we need the error code to be ignored so specify a very big number to make sure it succeeds
+                -->
+                <Property Name="CompileAllBlueprintsCommandletErrorLevel" Value="$(CommandletErrorLevel)" />
+                <Property Name="CompileAllBlueprintsCommandletErrorLevel" Value="999999" If="$(IsBuildMachine)"/>
+                <Commandlet Name="CompileAllBlueprints" ErrorLevel="$(CompileAllBlueprintsCommandletErrorLevel)" Project="$(ProjectFile)" Arguments="$(CommandletCommonArguments) -log=CompileAllBlueprints.log $(Test_DataValidationArguments) -IgnoreFolder=$(Validation_CompileAllBlueprints_IgnoreFolders)" />
+
+                <GenerateJenkinsCompatibleWarningsFile LogFile="$(LogsDirectory)/CompileAllBlueprints.log" Category="CompileAllBlueprints" OutputFile="$(Test_WarningsDirectory)/CompileAllBlueprints.txt" Append="False" WarningMessagesToIgnoreFile="$(ProjectDir)/Scripts/Build/Buildgraph/WarningMessagesToIgnore.txt" If="$(IsBuildMachine)" />
+            </Node>
+        </Agent>
+        <Agent Name="Map Check $(EditorPlatform)" Type="$(HostAgentType)">
+            <Node Name="Map Check $(EditorPlatform)" Requires="$(PlatformEditorPlatformCompileNodeName)">
+                <Commandlet Name="WorldPartitionBuilderCommandlet" ErrorLevel="$(CommandletErrorLevel)" Project="$(ProjectFile)" Arguments="$(CommandletCommonArguments) $(Validation_MapCheck_Maps) -builder=WorldPartitionMapCheckBuilder -AllowCommandletRendering -log -log=MapCheckValidation.log $(Test_DataValidationArguments)" />
+                <GenerateJenkinsCompatibleWarningsFile LogFile="$(LogsDirectory)/MapCheckValidation.log" Category="MapCheck" OutputFile="$(Test_WarningsDirectory)/MapCheckValidation.txt" Append="False" WarningMessagesToIgnoreFile="$(ProjectDir)/Scripts/Build/Buildgraph/WarningMessagesToIgnore.txt" />
+            </Node>
+        </Agent>
+        <Agent Name="Check No Redirectors $(EditorPlatform)" Type="$(HostAgentType)">
+            <Node Name="Check No Redirectors $(EditorPlatform)" Requires="$(PlatformEditorPlatformCompileNodeName)">
+                <Commandlet Name="CheckNoRedirectors" ErrorLevel="$(CommandletErrorLevel)" Project="$(ProjectFile)" Arguments="$(CommandletCommonArguments) -log -log=CheckNoRedirectors.log $(Test_DataValidationArguments)" />
+                <GenerateJenkinsCompatibleWarningsFile LogFile="$(LogsDirectory)/CheckNoRedirectors.log" Category="CheckNoRedirectors" OutputFile="$(Test_WarningsDirectory)/CheckNoRedirectors.txt" Append="False" WarningMessagesToIgnoreFile="$(ProjectDir)/Scripts/Build/Buildgraph/WarningMessagesToIgnore.txt" />
+            </Node>
+        </Agent>
+        <Agent Name="Static Analysis $(EditorPlatform)" Type="$(HostAgentType)">
+            <Node Name="Static Analysis $(EditorPlatform)">
+                <StaticAnalysis Target="$(ProjectName)" Configuration="Development" Platform="$(EditorPlatform)" ProjectPath="$(ProjectFile)" />
+            </Node>
+        </Agent>
+        <Do If="!$(Skip_Validation_All)">
+            <Property Name="GeneratedDataValidationNodes" Value="$(GeneratedDataValidationNodes);Naming Convention Validation $(EditorPlatform)" If="!$(Skip_Validation_NamingConvention)" />
+            <Property Name="GeneratedDataValidationNodes" Value="$(GeneratedDataValidationNodes);Data Validation $(EditorPlatform)" If="!$(Skip_Validation_DataValidation)" />
+            <Property Name="GeneratedDataValidationNodes" Value="$(GeneratedDataValidationNodes);Check All Blueprints $(EditorPlatform)" If="!$(Skip_Validation_CompileAllBlueprints)" />
+            <Property Name="GeneratedDataValidationNodes" Value="$(GeneratedDataValidationNodes);Map Check $(EditorPlatform)" If="!$(Skip_Validation_MapCheck)" />
+            <Property Name="GeneratedDataValidationNodes" Value="$(GeneratedDataValidationNodes);Check No Redirectors $(EditorPlatform)" If="!$(Skip_Validation_CheckNoRedirectors)" />
+            <Property Name="GeneratedDataValidationNodes" Value="$(GeneratedDataValidationNodes);Static Analysis $(EditorPlatform)" If="!$(Skip_Validation_StaticAnalysis)" />
+        </Do>
+
+        <Agent Name="Fill DDC $(EditorPlatform)" Type="$(HostAgentType)">
+            <Node Name="Fill DDC $(EditorPlatform)" Requires="$(PlatformEditorPlatformCompileNodeName)">
+                <Commandlet Name="DerivedDataCache" ErrorLevel="$(CommandletErrorLevel)" Project="$(ProjectFile)" Arguments="$(CommandletCommonArguments) -fill" />
+            </Node>
+        </Agent>
+
+        <Agent Name="Gather Text $(EditorPlatform)" Type="$(HostAgentType)">
+            <Node Name="Gather Text $(EditorPlatform)" Requires="$(PlatformEditorPlatformCompileNodeName)">
+                <Commandlet Name="GatherText" ErrorLevel="$(CommandletErrorLevel)" Project="$(ProjectFile)" Arguments="$(CommandletCommonArguments) -Config=Config/Localization/Game_Gather.ini" />
+            </Node>
+        </Agent>
+    </ForEach>
+
+    <ForEach Name="TargetPlatform" Values="$(TargetPlatforms)" Separator="+">
+        <!-- Declare type of host required to build & cook this platform-->
+        <Property Name="HostAgentType" Value="Win64" />
+        <Property Name="HostAgentType" Value="Mac" If="'$(TargetPlatform)' == 'Mac' or '$(TargetPlatform)' == 'IOS' or '$(TargetPlatform)' == 'tvOS'"/>
+        <!-- On consoles we can use regualr agents, but locally hosted tests need a Test agent-->
+        <Property Name="TestAgentType" Value="$(HostAgentType)" />
+        <!-- <Property Name="TestAgentType" Value="Test$(HostAgentType)" If="'$(TargetPlatform)' == 'Win64' or '$(TargetPlatform)' == 'Mac'"/> -->
+        
+        <Property Name="CompileAgentType" Value="$(HostAgentType)" />
+        <Property Name="PackageAgentType" Value="$(CompileAgentType)"/>
+        
+        <Property Name="PlatformEditorNodeName" Value="$(PreNodeName)Compile Editor $(HostAgentType)" />
+
+        <!-- Define these names up front as we use some of them several times -->
+        <Property Name="PlatformAgentName" Value="$(ProjectName) $(TargetPlatform)" />
+
+        <!-- Set CookPlatform since it isn't always the same as the target -->
+        <Property Name="CookPlatform" Value="$(TargetPlatform)" />
+        <Property Name="CookPlatform" Value="Windows" If="'$(CookPlatform)' == 'Win64'" />
+        <Property Name="CookPlatform" Value="$(CookPlatform)_ETC2" If="'$(TargetPlatform)' == 'Android'"/>
+        <Property Name="CookPlatform" Value="$(CookPlatform)Client" If="'$(TargetType)' == 'Client'" />
+
+        <Property Name="StagedPlatformFolder" Value="$(CookPlatform)"  />
+        <Property Name="StagePlatformDirectory" Value="$(ProjectOutputDirectory)/$(StagedPlatformFolder)" />
+
+        <!-- Hashing of staged data can only be done on Win64 hosts -->
+        <Property Name="DoUnsyncHashing" Value="$(HostAgentType) == 'Win64'" />
+        
+        <Property Name="BCR_DefaultArguments" Value="$(ProjectArgument) -platform=$(TargetPlatform) -log -stdlog -unattended -nosplash -utf8output uebp_LogFolder=$(LogsDirectory)" />
+        <Property Name="BCR_DefaultArguments" Value="$(BCR_DefaultArguments) -buildmachine -nofastbuildcontroller -SCCProvider=None" If="$(IsBuildMachine)" />
+        <Property Name="BCR_DefaultArguments" Value="$(BCR_DefaultArguments) -Clean" If="$(Clean)"/>
+        <Property Name="BCR_DefaultArguments" Value="$(BCR_DefaultArguments) -client" If="'$(TargetType)' == 'Client'" />
+        <Property Name="BCR_DefaultArguments" Value="$(BCR_DefaultArguments) -server" If="'$(DedicatedServer)'" />
+
+        <Property Name="PlatformTasks" Value="" />
+        <Property Name="AllPlatformBootTestNodes" Value="" />
+        <Property Name="AllPlatformTestNodes" Value="" />
+
+        <ForEach Name="TargetConfiguration" Values="$(TargetConfigurations)" Separator="+">
+            <Property Name="ConcatenatedName" Value="$(TargetName)_$(TargetPlatform)_$(TargetConfiguration)" />
+            <Property Name="DisplayNameSuffix" Value="$(TargetPlatform) $(TargetConfiguration)" />
+            <Property Name="TargetBinaries" Value="#Binaries_$(DisplayNameSuffix)" />
+            <Property Name="PlatformCompileNodeName" Value="$(PreNodeName)Compile $(DisplayNameSuffix)" />
+            <Property Name="PlatformCookNodeName" Value="$(PreNodeName)Cook $(DisplayNameSuffix)" />
+            <Property Name="PlatformStageNodeName" Value="$(PreNodeName)Stage $(DisplayNameSuffix)" />
+            <Property Name="PlatformHashNodeName" Value="$(PreNodeName)Hash $(DisplayNameSuffix)" />
+            <Property Name="PlatformPackageNodeName" Value="$(PreNodeName)Package $(DisplayNameSuffix)" />
+            <Property Name="PlatformPublishStagedNodeName" Value="$(PreNodeName)Publish Staged $(DisplayNameSuffix)" />
+            <Property Name="PlatformPublishPackagedNodeName" Value="$(PreNodeName)Publish Packaged $(DisplayNameSuffix)" />
+
+            <Agent Name="Compile $(PlatformAgentName) $(TargetConfiguration)" Type="$(CompileAgentType)">
+                <Node Name="$(PlatformCompileNodeName)">
+                    <Compile Target="$(TargetName)" Project="$(ProjectFile)" Platform="$(TargetPlatform)" Configuration="$(TargetConfiguration)" Clean="$(Clean)" Arguments="$(Compile_DefaultArguments) -log=$(LogsDirectory)/Compile_$(TargetName)_$(TargetPlatform)_$(TargetConfiguration).log" Tag="$(TargetBinaries)"/>
+                    <Tag Files="$(TargetBinaries)" Filter="*.target" With="#GameReceipts_$(PlatformCompileNodeName)"/>
+                    <SanitizeReceipt Files="#GameReceipts_$(PlatformCompileNodeName)" />
+
+                    <Do If ="$(With_Compile_SyncBinariesIntoStageDirectory)">
+                        <Tag Files="$(TargetBinaries)" Except="$(RootDir)\...\*.*" With="#BinariesToCopy_$(PlatformCompileNodeName)"/>
+                        <Copy Files="#BinariesToCopy_$(PlatformCompileNodeName)" From="$(ProjectDir)" To="$(StagePlatformDirectory)/SummerCamp/" Overwrite="True" />
+                    </Do>
+                </Node>
+            </Agent>
+
+            <Agent Name="Package $(PlatformAgentName) $(TargetConfiguration)" Type="$(PackageAgentType)">
+                <Node Name="$(PlatformCookNodeName)" Requires="$(PlatformEditorNodeName);$(GeneratedDataValidationNodes);$(GeneratedEditorTestNodes);$(GeneratedCookRequirements)">
+                    <Property Name="BCR_CookFlavor" Value="" If="" />
+                    <Property Name="BCR_CookFlavor" Value="ETC2" If="'$(TargetPlatform)' == 'Android'" />
+                    
+                    <Property Name="BCR_IterativeCooking" Value="" />
+                    <Property Name="BCR_IterativeCooking" Value="-iterate" If="!$(IsBuildMachine)" />
+                    <Property Name="BCR_IterativeCooking" Value="-iterate" If="$(Cook_ForceIterativeCooking)" />
+                    <Property Name="BCR_IterativeCooking" Value="" If="$(Cook_ForceNoIterativeCooking)" /> 
+
+                    <Property Name="BCR_Cook_Arguments" Value="$(BCR_DefaultArguments) $(BCR_IterativeCooking) -unversioned -cookflavor=&quot;$(BCR_CookFlavor)&quot;" />
+                    <Property Name="BCR_Cook_Arguments" Value="$(BCR_Cook_Arguments) -clean" If="$(Clean)" />
+                    <Property Name="BCR_Cook_Arguments" Value="$(BCR_Cook_Arguments) -compress" If="$(Cook_Compress)" />
+                    <Property Name="BCR_Cook_Arguments" Value="$(BCR_Cook_Arguments) -ddc=noshared" If="$(Cook_DDCNoShared)" />
+                    <Property Name="BCR_Cook_Arguments" Value="$(BCR_Cook_Arguments) -MapIniSection=$(MapIniSection)" If="'$(MapIniSection)' != ''"/>
+                    <Property Name="BCR_Cook_Arguments" Value="$(BCR_Cook_Arguments) -CookProcessCount=$(UE_MULTICOOK_PROCESS_COUNT)" />
+
+                    <Cook Project="$(ProjectFile)" Platform="$(CookPlatform)" Arguments="$(BCR_Cook_Arguments) -log -log=Cook_$(CookPlatform).log" />
+                    <GenerateJenkinsCompatibleWarningsFile LogFile="$(LogsDirectory)/Cook_$(CookPlatform).log" Category="Cook_$(CookPlatform)" OutputFile="$(Test_WarningsDirectory)/Cook_$(CookPlatform)_.txt" Append="False" If="$(IsBuildMachine)" WarningMessagesToIgnoreFile="$(ProjectDir)/Scripts/Build/Buildgraph/WarningMessagesToIgnore.txt" />
+                </Node>
+
+                <Node Name="$(PlatformStageNodeName)" Requires="$(PlatformCompileNodeName);$(PlatformCookNodeName)">
+                    <Property Name="BCR_Stage_Arguments" Value="$(BCR_DefaultArguments) -SkipBuild -SkipCook -Stage -Pak -prereqs -crashreporter -NoCodeSign -nop4 -configuration=$(TargetConfiguration) -log=Stage_$(ConcatenatedName).log" />
+                    <Property Name="BCR_Stage_Arguments" Value="$(BCR_Stage_Arguments) -ddc=noshared" If="$(Cook_DDCNoShared)" />
+
+                    <Switch>
+                        <Case If="$(TargetType) == 'Game'">
+                            <Property Name="BCR_Stage_Arguments" Value="$(BCR_Stage_Arguments) -Game -clientconfig=$(TargetConfiguration)" />
+                        </Case>
+                    </Switch>
+
+                    <UpdateBuildInformation 
+                        ConfigFile="$(ProjectDir)/Config/DefaultBuildInformation.ini" 
+                        IsLocal="!$(IsBuildMachine)"
+                        BuildSystemJob="$(BuildInfo_BuildSystemJob)" 
+                        VCSBranchName="$(BuildInfo_VCSBranchName)" 
+                        VCSChangeId="$(BuildInfo_VCSChangeId)"
+                        />
+                    
+                    <Command Name="BuildCookRun" Arguments="$(BCR_Stage_Arguments)"/>
+
+                    <OutputGitHeadShaToFile BaseDir="$(ProjectDir)" OutputFile="$(StagePlatformDirectory)/git.txt" If="$(TargetConfiguration) != 'Shipping'" />
+                </Node>
+
+                <Node Name="$(PlatformHashNodeName)" Requires="$(PlatformStageNodeName)">
+                    <Do If="$(DoUnsyncHashing)">
+                        <Spawn Exe="$(RootDir)/Engine/Restricted/NotForLicensees/Binaries/Win64/unsync.exe" Arguments="hash &quot;$(ProjectOutputDirectory)/$(StagedPlatformFolder)&quot; -v --buffered-files"/>
+                    </Do>
+                </Node>
+
+                <!-- <Node Name="$(PlatformPublishStagedNodeName)" Requires="$(PlatformHashNodeName)">
+                    <Copy Files="..." From="$(ProjectOutputDirectory)/$(StagedPlatformFolder)" To="$(NetworkOutputDirectory)/$(StagedPlatformFolder)/Staged"/>
+                    <Copy Files="..." From="$(ShaderSymbolsDirectory)/*$(TargetPlatform)*" To="$(NetworkOutputDirectory)/$(StagedPlatformFolder)/ShaderSymbols"/>
+                </Node> -->
+
+                <Node Name="$(PlatformPackageNodeName)" Requires="$(PlatformStageNodeName)">
+                    <Switch>
+                        <Case If="$(TargetPlatform) == 'Win64'">
+                            <WriteTextFile File="$(StagePlatformDirectory)/Demo.bat" Text="start %~dp0/SummerCamp.exe L_OW?Experience=/Demo/System/Experiences/PDA_OW_Demo_ExperienceDefinition" />
+                        </Case>
+                    </Switch>
+
+                    <Command Name="BuildCookRun" Arguments="$(BCR_DefaultArguments) -configuration=$(TargetConfiguration) -skipbuild -skipcook -skipstage -skippak -package"/>
+                </Node>
+
+                <Node Name="$(PlatformPublishPackagedNodeName)" Requires="$(PlatformPackageNodeName)">
+                    <Property Name="ArchiveDirectory" Value="$(Publish_Directory)" />
+                    <Property Name="ArchiveDirectory" Value="$(ProjectDir)/Saved/LocalBuilds" If="$(Package_Publish_WithZip)" />
+
+                    <Delete Files="$(ProjectDir)/Saved/LocalBuilds/.../*.*" If="$(Package_Publish_Clean)" />
+                    
+                    <Command Name="BuildCookRun" Arguments="$(BCR_DefaultArguments) -configuration=$(TargetConfiguration) -skipbuild -skipcook -skipstage -skippak -skippackage -archive -archivedirectory=$(ArchiveDirectory)"/>
+
+                    <Do If="$(Package_Publish_WithZip)">
+                        <Property Name="ZipFilePath" Value="$(ArchiveDirectory)/$(ConcatenatedName).zip" />
+                        <Zip FromDir="$(ArchiveDirectory)/$(CookPlatform)" Files="..." ZipFile="$(ZipFilePath)" />
+                        <Copy Files="$(ZipFilePath)" From="$(ArchiveDirectory)" To="$(Publish_Directory)"/>
+                    </Do>
+                </Node>
+            </Agent>
+
+            <!-- Create the -build argument for Gauntlet based on whether builds are local or on the network-->
+            <Property Name="GauntletTargetArgs" Value="-platform=$(TargetPlatform) -build=&quot;$(ProjectOutputDirectory)&quot;" />
+
+            <Agent Name="Test $(PlatformAgentName) $(TargetConfiguration)" Type="$(TestAgentType)">
+                <!-- Run through all configs -->
+                <!-- Prerequisites for the test to run -->
+                <Property Name="TestPrerequisites" Value="$(PlatformPackageNodeName)" />
+
+                <Property Name="GauntletTestArgs" Value="$(GauntletTargetTestArgs)"/>
+                <Property Name="GauntletTestArgs" Value="$(GauntletTargetTestAltArgs)" If="ContainsItem('$(AlternateDevicePoolPlatforms)', '$(TargetPlatform)', ';')"/>
+
+                <!-- Declare a boot test for the target-->
+                <Property Name="BootTestName" Value="$(PreNodeName)$(TargetPlatform) $(TargetConfiguration) BootTest" />
+                <Expand 
+                    Name="TestCommand" 
+                    NodeName="$(BootTestName)" 
+                    NodeRequires="$(TestPrerequisites)" 
+                    TestName="UE.BootTest" 
+                    OutputFragmentPath="$(TargetPlatform)/$(TargetConfiguration)" 
+                    GauntletTestArgs="$(GauntletTargetArgs) $(GauntletTargetTestArgs) -configuration=$(TargetConfiguration)" 
+                    />
+                <!-- Link the boot test in to the prerequisites and generated nodes if its enabled-->
+                <Property Name="TestPrerequisites" Value="$(TestPrerequisites);$(PlatformEditorNodeName)" />
+                <Do If="!$(Skip_Test_TargetBoot) and !ContainsItem('$(TargetPlatformsToSkipBootTests)', '$(TargetPlatform)', '+')">
+                    <Property Name="TestPrerequisites" Value="$(TestPrerequisites);$(BootTestName)" />
+                    <Property Name="AllPlatformBootTestNodes" Value="$(AllPlatformBootTestNodes);$(BootTestName)"/>
+                </Do>
+                <!-- Go through the list of tests -->
+                <ForEach Name="TestNameAndArguments" Values="$(TargetTestList)" Separator="+">
+                    <Property Name="TestName" Value="" />
+                    <Property Name="TestArguments" Value="" />
+                    <Expand 
+                        Name="ParseTestNameAndArguments" 
+                        List="$(TestNameAndArguments)" 
+                        />
+
+                    <Property Name="TestNameTitle" Value="$(TestName)"/>
+                    <Expand Name="SanitizeTestNameTitle"/>
+
+                    <Property Name="TestNameTitle" Value="$(TestName)"/>
+                    <Expand Name="SanitizeTestNameTitle"/>
+                    <!-- Run and report on the test-->
+                    <Property Name="TestNodeName" Value="$(PreNodeName)$(TargetPlatform) $(TargetConfiguration) $(TestNameTitle)" />
+                    <!-- Run the test. No 'Requires' as we run on the same machine locally and use the publish folder otherwise -->
+                    <Expand 
+                        Name="TestCommand" 
+                        NodeName="$(TestNodeName)" 
+                        NodeRequires="$(TestPrerequisites)" 
+                        TestName="$(TestName)" 
+                        OutputFragmentPath="$(TargetPlatform)/$(TargetConfiguration)" 
+                        GauntletTestArgs="$(TestArguments) $(GauntletTargetArgs) $(GauntletTargetTestArgs) -configuration=$(TargetConfiguration)" 
+                        />
+                    <!-- Add it to our list -->
+                    <Do If="!ContainsItem('$(TargetPlatformsToSkipTests)', '$(TargetPlatform)', '+')">
+                        <Property Name="AllPlatformTestNodes" Value="$(AllPlatformTestNodes);$(TestNodeName)"/>
+                    </Do>
+                </ForEach>
+            </Agent>
+
+            <Property Name="PlatformTasks" Value="$(PlatformCompileNodeName)" If="!$(Skip_Compile)" />
+            <Property Name="PlatformTasks" Value="$(PlatformTasks);$(PlatformCookNodeName)" If="!$(Skip_Cook) or $(With_Publish)" />
+            <Property Name="PlatformTasks" Value="$(PlatformTasks);$(PlatformPackageNodeName);$(PlatformPublishPackagedNodeName)" If="$(With_Publish)" />
+            <!-- <Property Name="PlatformTasks" Value="$(PlatformTasks);$(PlatformHashNodeName)"  If="$(PublishHashedStagingData)" />-->
+            <Property Name="PlatformTasks" Value="$(PlatformTasks);$(AllPlatformBootTestNodes);$(AllPlatformTestNodes)" />
+
+            <Property Name="GeneratedTargetNodes" Value="$(GeneratedTargetNodes);$(PlatformTasks)" />
+
+            <Property Name="GeneratedCompileAllTargetsNodes" Value="$(GeneratedCompileAllTargetsNodes);$(PlatformCompileNodeName)" />
+            <Property Name="GeneratedCookAllTargetsNodes" Value="$(GeneratedCookAllTargetsNodes);$(PlatformCookNodeName)" />
+            <Property Name="GeneratedPackageAllTargetsNodes" Value="$(GeneratedPackageAllTargetsNodes);$(PlatformPackageNodeName)" />
+            
+            <Switch>
+                <Case If="$(TargetType) == 'Game'">
+                    <Property Name="GeneratedCompileAllGameTargetsNodes" Value="$(GeneratedCompileAllGameTargetsNodes);$(PlatformCompileNodeName)" />
+                    <Property Name="GeneratedCookAllGameTargetsNodes" Value="$(GeneratedCookAllGameTargetsNodes);$(PlatformCookNodeName)" />
+                    <Property Name="GeneratedPackageAllGameTargetsNodes" Value="$(GeneratedPackageAllGameTargetsNodes);$(PlatformPackageNodeName)" />
+                </Case>
+            </Switch>
+        </ForEach>
+    </ForEach>
+
+    <Aggregate Name="Compile All Targets" Requires="$(GeneratedCompileAllTargetsNodes)"/>
+    <Aggregate Name="Compile All Game Targets" Requires="$(GeneratedCompileAllGameTargetsNodes)" />
+    <Aggregate Name="Compile All Client Targets" Requires="$(GeneratedCompileAllClientTargetNodes)" />
+    <Aggregate Name="Compile All Server Targets" Requires="$(GeneratedCompileAllServerTargetNodes)" />
+
+    <Aggregate Name="Cook All Targets" Requires="$(GeneratedCookAllTargetsNodes)"/>
+    <Aggregate Name="Cook All Game Targets" Requires="$(GeneratedCookAllGameTargetsNodes)" />
+    <Aggregate Name="Cook All Client Targets" Requires="$(GeneratedCookAllClientTargetNodes)" />
+    <Aggregate Name="Cook All Server Targets" Requires="$(GeneratedCookAllServerTargetNodes)" />
+
+    <Aggregate Name="Package All Targets" Requires="$(GeneratedPackageAllTargetsNodes)"/>
+    <Aggregate Name="Package All Game Targets" Requires="$(GeneratedPackageAllGameTargetsNodes)" />
+    <Aggregate Name="Package All Client Targets" Requires="$(GeneratedPackageAllClientTargetNodes)" />
+    <Aggregate Name="Package All Server Targets" Requires="$(GeneratedPackageAllServerTargetNodes)" />
+
+    <Aggregate Name="BuildAndTest SummerCamp" Requires="$(GeneratedToolNodes);$(GeneratedEditorTestNodes);$(GeneratedDataValidationNodes);$(GeneratedTargetNodes);$(GeneratedTargetTestNodes);$(GeneratedAdditionalNodes)"/>
+</BuildGraph>

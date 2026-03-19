@@ -1,135 +1,96 @@
-# Get the directory where this script is located
 $scriptDir = (Get-Item -Path $PSScriptRoot )
 
-# Walk up the hierarchy to find the project root (directory containing .uproject file)
-$projectRoot = $null
-$currentDir = $scriptDir
+. "$scriptDir/Include/HelperFunctions.ps1"
+. "$scriptDir/Include/Context.ps1"
 
-while ($currentDir) {
-    $uprojectFiles = Get-ChildItem -Path $currentDir -Filter "*.uproject" -File
-    if ($uprojectFiles) {
-        $projectRoot = $currentDir
-        break
-    }
-    $parentDir = Split-Path -Parent $currentDir
-    if ($parentDir -eq $currentDir) {
-        # Reached the root of the filesystem
-        break
-    }
-    $currentDir = $parentDir
-}
-
-if (-not $projectRoot) {
-    Write-Error "Could not find project root. No .uproject file found in parent directories."
-    exit 1
-}
-
-function Convert-Path($path) {
-    return $path -replace '^\\.\\', '' -replace '\\', '/'
-}
-
-function Get-RelativePath($path) {
-    return Convert-Path( ( $path | Resolve-Path -Relative -RelativeBasePath $projectRoot ) )
-}
-
-function Copy-File($sourceFileName, $destinationFolder, $force) {
-    $sourceFile = Join-Path -Path $scriptDir -ChildPath $sourceFileName
-
-    if ( -not ( Test-Path -Path $sourceFile ) ) {
-        Write-Host "Source file $sourceFile does not exist." -ForegroundColor Red
-        exit 1
-    }
-
-    $fileNameOnly = Split-Path -Path $sourceFile -Leaf
-
-    $destinationFile = Join-Path -Path $destinationFolder -ChildPath $fileNameOnly.
-    if ($force -eq $false -and ( Test-Path -Path $destinationFile ) ) {
-        Write-Host "File $destinationFile already exists. Skipping copy." -ForegroundColor Yellow
-        return $False
-    }
-
-    New-Item -ItemType Directory -Force -Path $destinationFolder | Out-Null
-    Copy-Item -Path $sourceFile -Destination $destinationFile -PassThru -Force | Out-Null
-    Write-Host "Copied $sourceFile to $destinationFile" -ForegroundColor Green
-    return $True
-}
-
-$bootStrapFolder = Get-RelativePath $scriptDir
-$bootstrapPythonFolder = Convert-Path ( Join-Path -Path $bootStrapFolder -ChildPath "Python" )
-
-$pythonAbsoluteFolder = Convert-Path ( Join-Path -Path $projectRoot -ChildPath "Scripts/Python" )
-if ( -not ( Test-Path -Path $pythonAbsoluteFolder ) ) {
-    New-Item -ItemType Directory -Force -Path $pythonAbsoluteFolder | Out-Null
-}
-
-$pythonRelativeFolder = Get-RelativePath $pythonAbsoluteFolder
-$pythonScriptsFolder = Convert-Path ( Join-Path -Path $pythonRelativeFolder -ChildPath ".venv/Scripts" )
+$ctx = [Context]::new()
 
 function Initialize-PythonFolder {
     
-    if (-not (Test-Path -Path $pythonAbsoluteFolder)) {
-        Write-Host "`nCreating Python folder at $pythonAbsoluteFolder..." -ForegroundColor Cyan
-        New-Item -ItemType Directory -Force -Path $pythonAbsoluteFolder | Out-Null
+    if (-not (Test-Path -Path $ctx.ProjectScriptsPythonFolder)) {
+        Write-Host "`nCreating Python folder at $($ctx.ProjectScriptsPythonFolder)..." -ForegroundColor Cyan
+        New-Item -ItemType Directory -Force -Path $ctx.ProjectScriptsPythonFolder | Out-Null
     } else {
-        Write-Host "`nPython folder already exists at $pythonAbsoluteFolder. Skipping creation." -ForegroundColor Yellow
+        Write-Host "`nPython folder already exists at $($ctx.ProjectScriptsPythonFolder). Skipping creation." -ForegroundColor Yellow
     }
 
-    Copy-File "Python/.gitignore" $pythonAbsoluteFolder $true
+    [void](Copy-File "Python/.gitignore" $ctx.ProjectScriptsPythonFolder $true)
 }
 
 function Write-SetupFile {
-    $setupFilePath = Join-Path -Path $projectRoot -ChildPath "Setup.ps1"
-
-    if ( Copy-File "Files/Setup.ps1" $projectRoot $true ) {
-        
-        (Get-Content $setupFilePath) `
-            -replace [regex]::Escape('$bootstrapPythonFolder'), $bootstrapPythonFolder `
-            -replace [regex]::Escape('$pythonScriptsFolder'), $pythonScriptsFolder | 
-            Set-Content $setupFilePath
+    $setupFilePath = Join-Path -Path $ctx.ProjectRoot -ChildPath "Setup.ps1"
+    if ( Copy-File "Files/Setup.ps1" $ctx.ProjectRoot $true ) {
+        $ctx.ReplaceTokensInFile($setupFilePath)
     }
 }
 
 function Write-ConfigFile {
-    Copy-File "Files/config.ini" "Config/PyScripts" $false
-}
-
-function Write-CompileAndRunEditorFile {
-    $compileAndRunEditorPath = Join-Path -Path $projectRoot -ChildPath "CompileAndRunEditor.ps1"
-        if ( Copy-File "Files/CompileAndRunEditor.ps1" $projectRoot $true ) {        
-            (Get-Content $compileAndRunEditorPath) `
-                -replace [regex]::Escape('$pythonScriptsFolder'), $pythonScriptsFolder | 
-                Set-Content $compileAndRunEditorPath
+    $configFilePath = Join-Path -Path $ctx.ProjectRoot -ChildPath "Config/PyScripts/config.ini"
+    if ( Copy-File "Files/config.ini" ( Join-Path -Path $ctx.ProjectConfigFolder -ChildPath "PyScripts" ) $false ) {
+        $ctx.ReplaceTokensInFile($configFilePath)
     }
 }
 
-function Write-BuildgraphFile {
-    $buildGraphScriptDirPath = Join-Path -Path $projectRoot -ChildPath "Scripts/Project"
-    if (-not (Test-Path -Path $buildGraphScriptDirPath)) {
-        $executeConfirmation = Read-Host "`nDo you want to create a Buildgraph script example? (Y/N)"
-        
-        if ($executeConfirmation -eq 'Y' -or $executeConfirmation -eq 'y') {        
-            $buildGraphScriptPath = Join-Path -Path $buildGraphScriptDirPath -ChildPath "BuildgraphTask.ps1"
+function Write-CompileAndRunEditorFile {
+    $compileAndRunEditorPath = Join-Path -Path $ctx.ProjectRoot -ChildPath "CompileAndRunEditor.ps1"
+    if ( Copy-File "Files/CompileAndRunEditor.ps1" $ctx.ProjectRoot $true ) {
+        $ctx.ReplaceTokensInFile($compileAndRunEditorPath)
+    }
+}
 
-            New-Item -ItemType Directory -Force -Path $buildGraphScriptDirPath
+function Copy-GenerateVSSolution {
+    [void]( Copy-File "Files/GenerateVSSolution.ps1" $ctx.ProjectRoot  $false )
+}
 
-            $bootStrapFolder = [System.IO.Path]::GetRelativePath($buildGraphScriptDirPath, $scriptDir)
-            $bootStrapFolder = Convert-Path $bootStrapFolder
+function Install-AutomationScripts {
+    $submodulePath = Join-Path -Path $ctx.ProjectRoot -ChildPath "Scripts/Automation"
 
-            $buildgraphSampleContent = @"
-& "$pythonScriptsFolder/ue-run-buildgraph.exe" --target "Buildgraph Task Name" -set:Clean=True -set:Targets=MyGameClient+MyGameServer -set:TargetConfigurations=Development+Shipping
-"@
+    if ( -not( Test-Path $submodulePath ) ) {
+        Write-Host "Submodule '$submodulePath' is NOT installed" -ForeroundColor Yellow
 
-        Set-Content -Path $buildGraphScriptPath -Value $buildgraphSampleContent -Encoding UTF8
-        Write-Host "`BuildgraphTask.ps1 has been successfully created!" -ForegroundColor Green
-        Write-Host "Location: $buildGraphScriptPath" -ForegroundColor Green
+        Push-Location $ctx.ProjectRoot
+        git submodule add git@github.com:TheEmidee/UEAutomationScripts.git "Scripts/Automation"
+        Pop-Location
+    }
+    
+    Write-Host "Submodule '$submodulePath' is installed" -Foreground Green
+}
+
+function Copy-BuildgraphFiles {
+    Copy-Folder "Files/BuildGraph" ( Join-Path -Path $ctx.ProjectRoot -ChildPath "Scripts/Build/BuildGraph" ) $true
+}
+
+function Copy-JenkinsFiles {
+    $destinationFolder = Join-Path -Path $ctx.ProjectRoot -ChildPath "Scripts/Build/Jenkins"
+    if ( Copy-Folder "Files/Jenkins" $destinationFolder $true ) {
+        $configFolder = Join-Path -Path $destinationFolder -ChildPath "config"
+
+        Get-ChildItem -Path $configFolder -Filter "jenkinsfile_*" -File | ForEach-Object {
+            $ctx.ReplaceTokensInFile($_.FullName)
         }
+    }
+}
+
+function Write-BuildgraphTaskFile {
+    $buildGraphScriptDirPath = Join-Path -Path $ctx.ProjectRoot -ChildPath "Scripts/Project"
+    if (-not (Test-Path -Path $buildGraphScriptDirPath)) {
+        New-Item -ItemType Directory -Force -Path $buildGraphScriptDirPath
+    }
+
+    $buildGraphTaskPath = Join-Path -Path $buildGraphScriptDirPath -ChildPath "BuildgraphTask.ps1"
+
+    if ( Copy-File "Files/BuildGraphTask.ps1" $buildGraphScriptDirPath $false ) {
+        # TODO : ReplaceTokensInFile will use the relative path to Scripts/Python/.venv/Scripts/ from the project root
+        # We need the relative path from Scripts/Project, which would be ../../Scripts/Python/.venv/Scripts/
+        $ctx.ReplaceTokensInFile($buildGraphTaskPath)
+        Write-Host "$buildGraphTaskPath has been successfully created!" -ForegroundColor Green
     } else {
-        Write-Host "`nBuildgraph script directory already exists at $buildGraphScriptDirPath. Skipping creation." -ForegroundColor Yellow
+        Write-Host "$buildGraphTaskPath already exists. Skipping creation." -ForegroundColor Yellow
     }
 }
 
 function Write-PreCommitConfig {
-    Copy-File "Files/.pre-commit-config.yaml" $projectRoot $true
+    [void](Copy-File "Files/.pre-commit-config.yaml" $ctx.ProjectRoot $true)
 }
 
 function Install-Python {
@@ -141,20 +102,17 @@ function Install-Python {
 }
 
 function Invoke-Setup {
-    $executeConfirmation = Read-Host "`nDo you want to execute Setup.ps1 now? (Y/N)"
-    if ($executeConfirmation -eq 'Y' -or $executeConfirmation -eq 'y') {
-        Write-Host "`nExecuting Setup.ps1..." -ForegroundColor Cyan
-        try {
-            $setupFile = Join-Path -Path $projectRoot -ChildPath "Setup.ps1"
-            & $setupFile
-        }
-        catch {
-            Write-Error "Failed to execute Setup.ps1: $_"
-            exit 1
-        }
+    Write-Host "`nExecuting Setup.ps1..." -ForegroundColor Cyan
+    try {
+        Push-Location $ctx.ProjectRoot
+        & "./Setup.ps1"
     }
-    else {
-        Write-Host "Setup.ps1 was not executed. You can run it manually later." -ForegroundColor Yellow
+    catch {
+        Write-Error "Failed to execute Setup.ps1: $_"
+        exit 1
+    }
+    finally {
+        Pop-Location
     }
 }
 
@@ -167,8 +125,43 @@ Initialize-PythonFolder
 Write-SetupFile
 Write-ConfigFile
 Write-CompileAndRunEditorFile
-Write-BuildgraphFile
+Copy-GenerateVSSolution
 Write-PreCommitConfig
+
 Install-Python
+
+Install-AutomationScripts
+Copy-BuildgraphFiles
+Copy-JenkinsFiles
+Write-BuildgraphTaskFile
 Invoke-PythonBootstrapScripts
-Invoke-Setup
+
+$Message = @"
+The setup of the project is done.
+Things you can do now:
+* Add custom python scripts in the folder Scripts/Python/.bootstrap to execute custom actions as part of the bootstrap process. 
+  It is safe to execute bootstrap.ps1 multiple times in a row, the script won't override existing files.
+  Some examples of what you can do in these custom bootstrap scripts:
+  * Add plugins you commonly use to the project
+* Update the config file in Config/PyScripts/config.ini
+  * Add automation scripts to AutomationScriptsDirectories
+  * Add Buildgraph shared properties
+  * Define the buildgraph shared storage path in BuildgraphSharedProperties
+* Update the config files in Scripts/Build/Jenkins/config
+  * You can read the documentation here: https://github.com/TheEmidee/JenkinsFileGenerator
+* Generate the jenkinsfiles by executing the script GenerateJenkinsfiles.ps1 in the Scripts/Build/Jenkins folder.
+* Update the file Scripts/Build/BuildGraph/BuildGraph.xml with your project values and your own tasks
+* Create custom powershell scripts in the folder Scripts/Project to easily execute your buildgraph tasks
+* Add custom python scripts in the folder Scripts/Python/.setup to execute custom actions when someone executes Setup.ps1. For example you can:
+  * Update BuildConfiguration.xml
+  * Register the machine to a Horde Server
+"@
+Write-ImportantMessage $Message
+
+$answer = Read-Host "Would you like to execute Setup.ps1 now? (Y/N)"
+
+if ( $answer -eq "Y" -or $answer -eq "y" ) {
+    Invoke-Setup
+} else {
+    Write-Host "You can execute Setup.ps1 later by running it from the project root folder." -ForegroundColor Yellow
+}

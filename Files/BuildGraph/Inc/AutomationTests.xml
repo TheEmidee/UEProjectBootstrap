@@ -1,0 +1,63 @@
+<?xml version='1.0' ?>
+<BuildGraph xmlns="http://www.epicgames.com/BuildGraph" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.epicgames.com/BuildGraph ../../Schema.xsd" >    
+
+    <!-- Test options -->
+    <Option Name="Skip_Test" Restrict="true|false" DefaultValue="False" Description="Whether to skip testing" />
+    <Option Name="Skip_Test_EditorBoot" DefaultValue="$(Skip_Test)" Description="Run a simple boot test on the editor before other tests"/>
+    <Option Name="Skip_Test_TargetBoot" DefaultValue="$(Skip_Test)" Description="Run a simple boot test on target platforms before other tests"/>
+    
+    <Option Name="TargetPlatformsToSkipBootTests" DefaultValue="" Restrict=".*" Description="Target platforms that should skip boot tests."/>
+    <Option Name="TargetsToSkipBootTests" DefaultValue="" Restrict=".*" Description="Targets that should skip boot tests."/>
+    
+    <Option Name="EditorPlatformsToSkipTests" DefaultValue="" Restrict=".*" Description="List of editor platforms that editor tests won't be run on" />
+    <Option Name="TargetPlatformsToSkipTests" DefaultValue="HoloLens+IOS+Linux+Stadia+TVOS" Restrict=".*" Description="List of target platforms that target tests won't be run on" />
+
+    <Option Name="EditorTestList" DefaultValue="" Description="Tests to run on the editor, with their arguments. Test1;Args1+Test2;Args2 etc"/>
+    <Option Name="TargetTestList" DefaultValue="" Description="Tests to run on the target platform(s), with their arguments. Test1;Args1+Test2;Args2 etc"/>
+
+    <!-- If skip test is true, add all target platforms to the "do not test" list -->
+    <Do If="$(Skip_Test)">
+        <Property Name="EditorPlatformsToSkipTests" Value="$(EditorPlatforms)" />
+        <Property Name="TargetPlatformsToSkipTests" Value="$(TargetPlatforms)" />
+        <Property Name="TargetPlatformsToSkipBootTests" Value="$(TargetPlatformsToSkipTests)" />
+    </Do>
+
+    <Property Name="Test_WarningsDirectory" Value="$(ProjectDir)/Saved/Jenkins" />
+    <Property Name="Test_DataValidationArguments" Value="$(CommandletCommonArguments) -nullrhi" />
+
+    <Macro Name="TestCommand" Arguments="NodeName;NodeRequires;TestName;OutputFragmentPath;GauntletTestArgs">
+        <Property Name="TestFragmentPath" Value="$(OutputFragmentPath)/$(TestName)" />
+        <Property Name="OutputLogDir" Value="$(GauntletLogDir)/$(TestFragmentPath)" />
+        <Property Name="OutputTempDir" Value="$(GauntletTempDir)/$(TestFragmentPath)" />
+        <Property Name="OutputReportDir" Value="$(GauntletReportDir)/$(TestFragmentPath)" />
+        <Property Name="GauntletReportArgs" Value="-logdir=&quot;$(OutputLogDir)&quot; -ReportExportPath=&quot;$(OutputReportDir)&quot; -tempdir=&quot;$(OutputTempDir)&quot;" />
+        
+        <Node Name="$(NodeName)" Requires="$(NodeRequires)">
+            <Command Name="RunUnreal" Arguments=" -test=&quot;$(TestName)&quot; $(GauntletTestArgs) $(GauntletReportArgs)" />
+        </Node>
+    </Macro>
+
+    <!-- Sanitize node title for test name that include ':' ie: 'Runtest=Group:Animation' => 'Runtest=Group_Animation' -->
+    <Macro Name="SanitizeTestNameTitle">
+        <!-- Expect a Property named "TestNameTitle" to be defined beforehand -->
+        <Do If="Contains('$(TestNameTitle)', ':')">
+            <Property Name="Left" Value=""/>
+            <Property Name="Right" Value=""/>
+            <Regex Pattern="(.*):(.*)" Capture="Left;Right" Input="$(TestNameTitle)"/>
+            <Property Name="TestNameTitle" Value="$(Left)_$(Right)"/>
+        </Do>
+    </Macro>
+
+    <Macro Name="ParseTestNameAndArguments" Arguments="List">
+        <ForEach Name="Entry" Values="$(List)" Separator=";">
+            <Switch>
+                <Case If="'$(TestName)' == ''">
+                    <Property Name="TestName" Value="$(Entry)" />
+                </Case>
+                <Default>
+                    <Property Name="TestArguments" Value="$(Entry)" />
+                </Default>
+            </Switch>
+        </ForEach>
+    </Macro>
+</BuildGraph>

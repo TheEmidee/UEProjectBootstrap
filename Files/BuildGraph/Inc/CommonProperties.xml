@@ -1,0 +1,14 @@
+<?xml version='1.0' ?>
+<BuildGraph xmlns="http://www.epicgames.com/BuildGraph" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.epicgames.com/BuildGraph ../Schema.xsd" >
+    <Option Name="CI-BuildId" DefaultValue="0" Description="Unique build Id from the continuous integration system" />
+    <Property Name="CL-String" Value="CL-$(Change)"/>
+    <Property Name="BuildName" Value="$(ProjectName)-$(CL-String)"/>
+
+    <Property Name="ResolvedSymbolsVersion" Value="$(Publish_UploadSymbols_Version)" />
+    <Property Name="ResolvedSymbolsVersion" Value="$(CI-BuildId)" If="$(IsBuildMachine)" />
+    <Property Name="CrashReportClientUrl" Value="https://YOUR_URL" />
+
+    <Macro Name="UpdateCrashReportClientConfig">
+        <ModifyConfig File="$(ConfigDirectory)/CrashReporter/DefaultEngine.ini" Section="CrashReportClient" Key="DataRouterUrl" Value="&quot;$(CrashReportClientUrl)$(ResolvedSymbolsVersion)&quot;" />
+    </Macro>
+</BuildGraph>
