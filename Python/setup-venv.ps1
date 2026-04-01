@@ -28,7 +28,7 @@ try {
         Write-Host "Found additional requirements at: $additionalrequirementsFilePath" -ForegroundColor Cyan
     }
 
-    uv pip install @pipArgs --link-mode=copy
+    uv pip install @pipArgs --link-mode=copy --upgrade
 
     Write-Host "`nSetup complete!" -ForegroundColor Green
     Write-Host "Virtual environment is now active." -ForegroundColor Green
