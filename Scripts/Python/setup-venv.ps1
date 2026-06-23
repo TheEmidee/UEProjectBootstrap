@@ -1,8 +1,8 @@
-$configPath = Join-Path -Path $PSScriptRoot -ChildPath "..\config.ps1"
+$configPath = Join-Path -Path $PSScriptRoot -ChildPath "..\..\config.ps1"
 
 . $configPath
 
-$pythonFolder = Resolve-Path( Join-Path -Path $PSScriptRoot -ChildPath "..\..\Python" )
+$pythonFolder = Resolve-Path( Join-Path -Path $PSScriptRoot -ChildPath "..\..\..\Python" )
 $requirementsFilePath = Join-Path -Path $PSScriptRoot -ChildPath $PYTHON_REQUIREMENTS_FILE_NAME
 $additionalrequirementsFilePath = Join-Path -Path $pythonFolder -ChildPath $PYTHON_REQUIREMENTS_FILE_NAME
 $vEnvFolderPath = Join-Path -Path $pythonFolder -ChildPath $PYTHON_VENV_NAME
@@ -30,11 +30,8 @@ try {
 
     uv pip install @pipArgs --link-mode=copy --upgrade
 
-    Write-Host "`nSetup complete!" -ForegroundColor Green
-    Write-Host "Virtual environment is now active." -ForegroundColor Green
+    Write-Host "`nSetup complete! Virtual environment is now active" -ForegroundColor Green
 
 } finally {
-    # This block runs no matter what happens in the 'try' block
     Pop-Location
-    Write-Host "`nReturned to original directory." -ForegroundColor Gray
 }

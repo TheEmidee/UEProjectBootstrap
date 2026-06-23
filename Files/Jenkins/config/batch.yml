@@ -1,0 +1,9 @@
+items:
+- input_config_file: "jenkinsfile_pull_request.yaml"
+  output_jenkinsfile: "../Jenkinsfile_PR"
+- input_config_file: "jenkinsfile_release_template.yaml"
+  output_jenkinsfile: "../Jenkinsfile_Release_Development"
+  blackboard_data: "build_type=Development,branch_name=develop"
+- input_config_file: "jenkinsfile_release_template.yaml"
+  output_jenkinsfile: "../Jenkinsfile_Release_Shipping"
+  blackboard_data: "build_type=Shipping,branch_name=develop"

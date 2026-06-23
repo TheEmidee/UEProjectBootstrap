@@ -1,7 +1,7 @@
 $commands = @(
-    "$pythonScriptsFolder/ue-close-editor.exe",
-    "$pythonScriptsFolder/ue-compile-editor.exe",
-    "$pythonScriptsFolder/ue-run-editor.exe"
+    "@pythonScriptsFolder@/ue-close-editor.exe",
+    "@pythonScriptsFolder@/ue-compile-editor.exe",
+    "@pythonScriptsFolder@/ue-run-editor.exe"
 )
 
 foreach ($cmd in $commands) {

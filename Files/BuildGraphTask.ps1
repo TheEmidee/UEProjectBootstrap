@@ -1,0 +1,1 @@
+& "@pythonScriptsFolder@/ue-run-buildgraph.exe" --target "Buildgraph Task Name" -set:Clean=True -set:Targets=@projectName@ -set:TargetConfigurations=Development

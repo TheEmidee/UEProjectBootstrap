@@ -1,2 +1,0 @@
-UEPyScripts==1.2.3
-GameDevTools
