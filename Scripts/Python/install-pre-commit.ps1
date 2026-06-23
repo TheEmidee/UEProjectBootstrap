@@ -1,4 +1,4 @@
-$configPath = Join-Path -Path $PSScriptRoot -ChildPath "..\config.ps1"
+$configPath = Join-Path -Path $PSScriptRoot -ChildPath "..\..\config.ps1"
 
 . $configPath
 

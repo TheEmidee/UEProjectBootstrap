@@ -1,12 +1,12 @@
-$configPath = Join-Path -Path $PSScriptRoot -ChildPath "..\config.ps1"
+$configPath = Join-Path -Path $PSScriptRoot -ChildPath "..\..\config.ps1"
 
 . $configPath
 
-$pythonFolder = Resolve-Path( Join-Path -Path $PSScriptRoot -ChildPath "..\..\Python" )
+$pythonFolder = Resolve-Path( Join-Path -Path $PSScriptRoot -ChildPath "..\..\..\Python" )
 
 Push-Location $pythonFolder
 
-$hookFolder = Join-Path -Path $pythonFolder -ChildPath ".setup"
+$hookFolder = Join-Path -Path $pythonFolder -ChildPath ".bootstrap"
 
 if (Test-Path $hookFolder) {
     Get-ChildItem -Path $hookFolder -Filter *.py | Sort-Object Name | ForEach-Object {

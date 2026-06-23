@@ -1,5 +1,6 @@
 class Context {
-    [string] $RelativeBootstrapPythonFolder
+    [string] $AbsoluteBootstrapScriptsFolder
+    [string] $RelativeBootstrapScriptsFolder
     [string] $ProjectRoot
     [string] $ProjectName
     [string] $ProjectConfigFolder
@@ -11,10 +12,8 @@ class Context {
         $this.SetProjectRoot()
         
         $BoostrapRootDirectory = ( Get-Item -Path $PSScriptRoot ).Parent
-        
-        $relativeBootStrapFolder = $this.GetRelativePath( $BoostrapRootDirectory )
-        $this.RelativeBootstrapPythonFolder = Convert-Path ( Join-Path -Path $relativeBootStrapFolder -ChildPath "Python" )
-        
+        $this.AbsoluteBootstrapScriptsFolder = Join-Path -Path $BoostrapRootDirectory -ChildPath "Scripts"
+        $this.RelativeBootstrapScriptsFolder = $this.GetRelativePath( $this.AbsoluteBootstrapScriptsFolder )        
         $this.ProjectConfigFolder = Convert-Path ( Join-Path -Path $this.ProjectRoot -ChildPath "Config" )
 
         $this.ProjectScriptsFolder = Convert-Path ( Join-Path -Path $this.ProjectRoot -ChildPath "Scripts" )
@@ -56,7 +55,7 @@ class Context {
     [void] ReplaceTokensInFile($filePath) {
         (Get-Content $filePath) `
             -replace [regex]::Escape('@projectName@'), $this.ProjectName `
-            -replace [regex]::Escape('@bootstrapPythonFolder@'), $this.RelativeBootstrapPythonFolder `
+            -replace [regex]::Escape('@bootstrapScriptsFolder@'), $this.RelativeBootstrapScriptsFolder `
             -replace [regex]::Escape('@pythonScriptsFolder@'), $this.RelativeProjectScriptsPythonAliasFolder | 
             Set-Content $filePath
     }

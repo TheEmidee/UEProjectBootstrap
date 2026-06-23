@@ -14,7 +14,7 @@ function Initialize-PythonFolder {
         Write-Host "`nPython folder already exists at $($ctx.ProjectScriptsPythonFolder). Skipping creation." -ForegroundColor Yellow
     }
 
-    [void](Copy-File "Python/.gitignore" $ctx.ProjectScriptsPythonFolder $true)
+    [void](Copy-File "Scripts/Python/.gitignore" $ctx.ProjectScriptsPythonFolder $true)
 }
 
 function Write-SetupFile {
@@ -95,10 +95,10 @@ function Write-PreCommitConfig {
 
 function Install-Python {
     Write-Host "Installing Python..." -ForegroundColor Cyan
-    & "$scriptDir/Python/install-python.ps1"
+    & "$($ctx.AbsoluteBootstrapScriptsFolder)/Python/install-python.ps1"
 
     Write-Host "Setup Python virtual environment..." -ForegroundColor Cyan
-    & "$scriptDir/Python/setup-venv.ps1"
+    & "$($ctx.AbsoluteBootstrapScriptsFolder)/Python/setup-venv.ps1"
 }
 
 function Invoke-Setup {
@@ -118,7 +118,7 @@ function Invoke-Setup {
 
 function Invoke-PythonBootstrapScripts {
     Write-Host "Execute python bootstrap scripts..." -ForegroundColor Cyan
-    & "$scriptDir/Python/run-bootstrap-scripts.ps1"
+    & "$($ctx.AbsoluteBootstrapScriptsFolder)/Python/run-bootstrap-scripts.ps1"
 }
 
 Initialize-PythonFolder

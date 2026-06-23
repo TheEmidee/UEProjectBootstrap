@@ -1,8 +1,8 @@
-$configPath = Join-Path -Path $PSScriptRoot -ChildPath "..\config.ps1"
+$configPath = Join-Path -Path $PSScriptRoot -ChildPath "..\..\config.ps1"
 
 . $configPath
 
-$pythonFolder = Resolve-Path( Join-Path -Path $PSScriptRoot -ChildPath "..\..\Python" )
+$pythonFolder = Resolve-Path( Join-Path -Path $PSScriptRoot -ChildPath "..\..\..\Python" )
 $requirementsFilePath = Join-Path -Path $PSScriptRoot -ChildPath $PYTHON_REQUIREMENTS_FILE_NAME
 $additionalrequirementsFilePath = Join-Path -Path $pythonFolder -ChildPath $PYTHON_REQUIREMENTS_FILE_NAME
 $vEnvFolderPath = Join-Path -Path $pythonFolder -ChildPath $PYTHON_VENV_NAME
