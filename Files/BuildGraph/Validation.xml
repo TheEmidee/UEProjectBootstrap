@@ -1,0 +1,12 @@
+<?xml version='1.0' ?>
+<BuildGraph xmlns="http://www.epicgames.com/BuildGraph" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.epicgames.com/BuildGraph ../../../../Engine/Build/Graph/Schema.xsd">
+    <Extend Name="PostEditorPlatformStep">
+        <Agent Name="Check No Redirectors" Type="Win64">
+            <Node Name="Check No Redirectors" Requires="WormWorldUE Compile Editor Win64" >
+                <Commandlet Name="CheckNoRedirectors" ErrorLevel="$(CommandletErrorLevel)" Project="$(ProjectFile)" Arguments="$(CommandletCommonArguments) -log -log=CheckNoRedirectors.log" />
+            </Node>
+        </Agent>
+
+        <Property Name="GeneratedCookedEditorTestNodes" Value="$(GeneratedCookedEditorTestNodes);Check No Redirectors" If="!$(Skip_Validation_CheckNoRedirectors)" />
+    </Extend>
+</BuildGraph>
