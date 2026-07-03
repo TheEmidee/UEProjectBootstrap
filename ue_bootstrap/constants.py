@@ -8,9 +8,8 @@ PYTHON_VERSION = "3.11.8"
 # https://github.com/.../archive/... URL only works in a browser session that
 # is already logged in). If the EPIC_GITHUB_TOKEN environment variable is set,
 # step 3 will send it as a bearer token when downloading.
-ENGINE_DOWNLOAD_URL_TEMPLATE = (
-    "https://github.com/EpicGames/UnrealEngine/archive/refs/tags/{version}-release.zip"
-)
+ENGINE_REPO_PATH = "EpicGames/UnrealEngine.git"
+ENGINE_TAG_TEMPLATE = "{version}-release"
 
 # Packages installed into the project's venv (step 6d).
 PIP_PACKAGES = [
