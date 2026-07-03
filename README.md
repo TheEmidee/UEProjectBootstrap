@@ -1,28 +1,83 @@
-# UEProjectBootstrap
+# ue_bootstrap
 
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) 
+Bootstraps an Unreal Engine project as a **native project of the engine sources**
+(i.e. the project lives inside a checkout of the engine, rather than pointing
+at a separately-installed engine).
 
-Boostrap an unreal engine project with various tools and scripts, like UEPyScripts and GameDevTools
+## Usage
 
-## Installation 🛠️
+```bash
+python -m ue_bootstrap \
+    --project-name MyGame \
+    --target-folder D:/Projects \
+    --engine-version 5.7.4
+```
 
-- Add to your unreal engine repository as a submodule: `git submodule add git@github.com:TheEmidee/UEPyScriptsBootstrap Scripts/Bootstrap`
+or, if installed (`pip install .`):
 
-## Quick Start 🚀
+```bash
+ue-bootstrap --project-name MyGame --target-folder D:/Projects --engine-version 5.7.4
+```
 
-Bootstrap the project:
+Any argument you omit will be prompted for interactively during step 1.
 
-- Execute the script `bootstrap.ps1`. This script will create:
-   - `Setup.ps1` at the root of the project.
-   - `Config.ini` in `Config/PyScripts`
-   - `CompileAndRunEditor.ps1` also at the root
-   - `BuildgraphTask.ps1` in the folder `Scripts/Project`
-- Execute `Setup.ps1` to:
-   1. check if python is installed, and install it if not
-   2. create the python virtual environment
-   3. install the python packages [UEPyScripts](https://github.com/TheEmidee/UEPyScripts) and [PyGameDevTools](https://github.com/TheEmidee/PyGameDevTools).
-   3. call the script `ue-check-engine-installation`
-- Execute `CompileAndRunEditor.ps1` to compile your C++ code and run the editor when done !
-- If you use buildgraph in your project:
-   1. Uncomment the buildgraph properties in `Config/PyScripts/config.ini` and adapt to your project
-   2. Duplicate the script `BuildgraphTask.ps1` and adapt it to run your own targets.
+## What it does
+
+1. **Gather information** - project name / target folder / engine version, stored on the `Context`.
+2. **Create project folders** - `<target>/<project_name>/<project_name>`.
+3. **Download engine sources** - zip of the requested engine tag from
+   `EpicGames/UnrealEngine` on GitHub. This is a private repo — set the
+   `EPIC_GITHUB_TOKEN` environment variable to a GitHub personal access token
+   from an account linked to Epic, or the download will fail with a 404/403.
+4. **Extract engine sources** into the root project folder.
+5. **Check for a project** - if the child project folder (the inner
+   `<project_name>` folder) is empty, the module stops and tells you to
+   create your `.uproject` there manually using the freshly extracted engine,
+   then re-run the module.
+6. **Set up Python** (`Scripts/Python`), via sub-steps:
+   a. create the folder, b. install `uv`, c. install the pinned Python
+   version with `uv`, d. create the venv and `uv pip install -r requirements.txt`.
+7. **Install pre-commit** into the venv and copy `.pre-commit-config.yaml` to
+   the project root.
+8. **Copy root files** - `.lfsconfig`, `.gitattributes`, `.gitignore`,
+   `.clang-format`, each as its own sub-step.
+
+Re-running the module is safe: every step implements `should_bypass()` so
+already-completed work is skipped and reported as such.
+
+## Layout
+
+```
+ue_bootstrap/
+    command.py        # Command / SubCommand base classes
+    context.py         # shared Context dataclass
+    constants.py        # static data (python version, package pins, urls...)
+    discovery.py         # auto-discovers step classes
+    runner.py             # orders + runs discovered steps
+    cli.py                 # argument parsing / entry point
+    steps/                  # one file per top-level step
+        step_01_gather_information.py
+        step_02_create_folders.py
+        step_03_download_engine.py
+        step_04_extract_engine.py
+        step_05_check_project.py
+        step_06_setup_python.py     # + sub-commands 6a-6d
+        step_07_pre_commit.py
+        step_08_copy_files.py         # + sub-commands 8a-8d
+    resources/
+        requirements.txt
+        templates/
+            .pre-commit-config.yaml
+            .lfsconfig
+            .gitattributes
+            .gitignore
+            .clang-format
+```
+
+## Adding a new step
+
+Drop a new file in `steps/`, subclass `Command`, implement
+`get_step_number`, `get_step_name`, `execute` (and optionally
+`should_bypass`, `ask_user`, `get_sub_commands`). It will be picked up
+automatically — no registration needed. Use a step number that doesn't
+collide with an existing one to control ordering.

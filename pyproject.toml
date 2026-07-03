@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ue-bootstrap"
+version = "0.1.0"
+description = "Bootstrap an Unreal Engine project as a native project of the engine sources."
+requires-python = ">=3.9"
+
+[project.scripts]
+ue-bootstrap = "ue_bootstrap.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["ue_bootstrap*"]
+
+[tool.setuptools.package-data]
+ue_bootstrap = ["resources/*.txt", "resources/templates/*"]

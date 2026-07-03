@@ -1,0 +1,3 @@
+UEPyScripts==1.2.7
+GameDevTools==1.1.0
+JenkinsfileGenerator==1.12.0

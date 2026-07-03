@@ -1,0 +1,32 @@
+# Engine build artifacts
+Engine/Binaries/
+Engine/Intermediate/
+Engine/DerivedDataCache/
+Engine/Saved/
+
+# Project build artifacts
+*/Binaries/
+*/Intermediate/
+*/DerivedDataCache/
+*/Saved/
+*/.vs/
+*/Build/
+
+# IDE / tooling
+.vs/
+.vscode/
+*.sln
+*.suo
+*.opensdf
+*.sdf
+*.VC.db
+*.VC.opendb
+
+# Python venv
+Scripts/Python/.venv/
+Scripts/Python/__pycache__/
+*.pyc
+
+# Misc
+*.tmp
+.engine_extracted
