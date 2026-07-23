@@ -7,19 +7,19 @@ $ctx = [Context]::new()
 
 function Initialize-PythonFolder {
     
-    if (-not (Test-Path -Path $ctx.ProjectScriptsPythonFolder)) {
-        Write-Host "`nCreating Python folder at $($ctx.ProjectScriptsPythonFolder)..." -ForegroundColor Cyan
-        New-Item -ItemType Directory -Force -Path $ctx.ProjectScriptsPythonFolder | Out-Null
+    if (-not (Test-Path -Path $ctx.ScriptsPythonFolder)) {
+        Write-Host "`nCreating Python folder at $($ctx.ScriptsPythonFolder)..." -ForegroundColor Cyan
+        New-Item -ItemType Directory -Force -Path $ctx.ScriptsPythonFolder | Out-Null
     } else {
-        Write-Host "`nPython folder already exists at $($ctx.ProjectScriptsPythonFolder). Skipping creation." -ForegroundColor Yellow
+        Write-Host "`nPython folder already exists at $($ctx.ScriptsPythonFolder). Skipping creation." -ForegroundColor Yellow
     }
 
-    [void](Copy-File "Scripts/Python/.gitignore" $ctx.ProjectScriptsPythonFolder $true)
+    [void](Copy-File "Scripts/Python/.gitignore" $ctx.ScriptsPythonFolder $true)
 }
 
 function Write-SetupFile {
-    $setupFilePath = Join-Path -Path $ctx.ProjectRoot -ChildPath "Setup.ps1"
-    if ( Copy-File "Files/Setup.ps1" $ctx.ProjectRoot $true ) {
+    $setupFilePath = Join-Path -Path $ctx.RepositoryRoot -ChildPath "Setup.ps1"
+    if ( Copy-File "Files/Setup.ps1" $ctx.RepositoryRoot $true ) {
         $ctx.ReplaceTokensInFile($setupFilePath)
     }
 }
@@ -32,8 +32,8 @@ function Write-ConfigFile {
 }
 
 function Write-CompileAndRunEditorFile {
-    $compileAndRunEditorPath = Join-Path -Path $ctx.ProjectRoot -ChildPath "CompileAndRunEditor.ps1"
-    if ( Copy-File "Files/CompileAndRunEditor.ps1" $ctx.ProjectRoot $true ) {
+    $compileAndRunEditorPath = Join-Path -Path $ctx.RepositoryRoot -ChildPath "CompileAndRunEditor.ps1"
+    if ( Copy-File "Files/CompileAndRunEditor.ps1" $ctx.RepositoryRoot $true ) {
         $ctx.ReplaceTokensInFile($compileAndRunEditorPath)
     }
 }
@@ -104,7 +104,7 @@ function Install-Python {
 function Invoke-Setup {
     Write-Host "`nExecuting Setup.ps1..." -ForegroundColor Cyan
     try {
-        Push-Location $ctx.ProjectRoot
+        Push-Location $ctx.RepositoryRoot
         & "./Setup.ps1"
     }
     catch {
@@ -125,15 +125,20 @@ Initialize-PythonFolder
 Write-SetupFile
 Write-ConfigFile
 Write-CompileAndRunEditorFile
-Copy-GenerateVSSolution
+
+if ($ctx.IsForeignProject) {
+    Copy-GenerateVSSolution
+}
 Write-PreCommitConfig
 
 Install-Python
 
-Install-AutomationScripts
-Copy-BuildgraphFiles
-Copy-JenkinsFiles
-Write-BuildgraphTaskFile
+# TODO
+# Install-AutomationScripts
+# Copy-BuildgraphFiles
+# Copy-JenkinsFiles
+# Write-BuildgraphTaskFile
+
 Invoke-PythonBootstrapScripts
 
 $Message = @"
