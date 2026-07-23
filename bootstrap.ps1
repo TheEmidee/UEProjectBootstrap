@@ -90,7 +90,7 @@ function Write-BuildgraphTaskFile {
 }
 
 function Write-PreCommitConfig {
-    [void](Copy-File "Files/.pre-commit-config.yaml" $ctx.ProjectRoot $true)
+    [void](Copy-File "Files/.pre-commit-config.yaml" $ctx.RepositoryRoot $true)
 }
 
 function Install-Python {
