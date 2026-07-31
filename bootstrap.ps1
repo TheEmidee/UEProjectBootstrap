@@ -1,9 +1,25 @@
+param(
+    [Parameter(Mandatory)]
+    [string]$ProjectPath
+)
+
+if ( -not ( Test-Path -Path $ProjectPath ) ) {
+    Write-Error("Invalid Project Path : $($ProjectPath)")
+    exit(1)
+}
+
+$ProjectFile = Get-Item $ProjectPath
+if ($ProjectFile.Extension -ne ".uproject") {
+    Write-Error("The project path must be a .uproject file")
+    exit(1)
+}
+
 $scriptDir = (Get-Item -Path $PSScriptRoot )
 
 . "$scriptDir/Include/HelperFunctions.ps1"
 . "$scriptDir/Include/Context.ps1"
 
-$ctx = [Context]::new()
+$ctx = [Context]::new($ProjectFile)
 
 function Initialize-PythonFolder {
     
