@@ -1,0 +1,9 @@
+  - repo: local
+    hooks:
+      - id: ugs-pull
+        name: UGS Pull
+        entry: Scripts/Python/.venv/Scripts/ue-ugs-pull.exe
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [post-checkout, post-merge]

@@ -6,7 +6,7 @@ $commands = @(
 
 foreach ($cmd in $commands) {
     & $cmd
-    
+
     if ($LASTEXITCODE -ne 0) {
         Write-Host "`n[!] Error: Command failed with exit code $LASTEXITCODE" -ForegroundColor Red
         Write-Host "Press any key to close this window..."

@@ -1,0 +1,20 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger: Project Bootstrap",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "ueprojectbootstrap.cli",
+            "cwd": "E:\\Dev\\Projects\\UEProjectBootstrap",
+            "console": "integratedTerminal",
+            "args": [
+                "--uproject",
+                "E:\\Dev\\Projects\\UEGameWithSources\\MyGame\\MyGame.uproject"
+            ]
+        }
+    ]
+}

@@ -1,0 +1,18 @@
+[project]
+name = "ueprojectbootstrap"
+version = "1.2.0"
+description = "Bootstrap an Unreal Engine project with various tools and scripts, like UEPyScripts and GameDevTools, using Astral UV"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+ueprojectbootstrap = "ueprojectbootstrap.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ueprojectbootstrap"]

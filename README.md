@@ -6,56 +6,41 @@ Boostrap an unreal engine project with various tools and scripts, like UEPyScrip
 
 ## Installation 🛠️
 
-- Add to your unreal engine repository as a submodule: `git submodule add git@github.com:TheEmidee/UEPyScriptsBootstrap Scripts/Bootstrap`
+This tool is a standalone Python package, run from outside the project you want to bootstrap — it is not added as a submodule anymore.
+
+- Clone this repository.
+- Run `setup-env.ps1` to install [Astral UV](https://docs.astral.sh/uv/) and sync the tool's own virtual environment.
 
 ## Quick Start 🚀
 
-Bootstrap the project:
+Bootstrap a project by pointing the tool at its `.uproject` file:
 
-Execute the script `bootstrap.ps1`. This script will:
-   - Create `Setup.ps1` at the root of the project.
-   - Create `Config.ini` in `Config/PyScripts`
-   - Create `CompileAndRunEditor.ps1` also at the root
-   - Create `BuildgraphTask.ps1` in the folder `Scripts/Project`
-   - Create `.pre-commit-config.yaml` at the root of the project
-   - Install Python locally using [Astral UV](https://docs.astral.sh/uv/)
-   - Install the python requirements
-   - Execute the python bootstrap scripts if any
+```
+uv run ueprojectbootstrap "C:\Path\To\YourProject\YourProject.uproject"
+```
+
+For a native project (engine + game in the same repository), pass the `.uproject` file inside the game folder — the tool walks up from it to find the repository root (the folder containing `Engine/Build/Build.version`) automatically. For a foreign project, the repository root and the game project folder are the same.
+
+The tool will:
+   - Create `Setup.ps1` at the root of the repository.
+   - Create `config.ini` in `Config/PyScripts` of the game project folder.
+   - Create `CompileAndRunEditor.ps1` and `GenerateVSSolution.ps1` in the game project folder.
+   - Create `.pre-commit-config.yaml` at the root of the repository.
 
 When the script is done, you can now commit all the changes so that all the users have access to the various scripts.
 
 When the project has been bootstrapped, each user can:
 
-- Execute `Setup.ps1` to:
-   1. Install [Astral UV](https://docs.astral.sh/uv/)
-   2. Install the required python version
-   3. Install [pre-commit](https://pre-commit.com/index.html)
-   4. Create the python virtual environment with the python packages [UEPyScripts](https://github.com/TheEmidee/UEPyScripts), [PyGameDevTools](https://github.com/TheEmidee/PyGameDevTools) and [pypyr](https://pypyr.io)
-   5. Install the pre-commit hooks
-   6. Execute the python custom setup scripts
-   7. call the script `ue-check-engine-installation`
-- Execute `CompileAndRunEditor.ps1` to compile your C++ code and run the editor when done !
-- If you use buildgraph in your project:
-   1. Uncomment the buildgraph properties in `Config/PyScripts/config.ini` and adapt to your project
-   2. Duplicate the script `BuildgraphTask.ps1` and adapt it to run your own targets.
+- Execute `Setup.ps1` (at the root of the repository) to:
+   1. Run `Scripts/Setup.bat` if the project is native.
+   2. Install [Astral UV](https://docs.astral.sh/uv/) and the required Python version.
+   3. Create the python virtual environment with the python packages [UEPyScripts](https://github.com/TheEmidee/UEPyScripts), [PyGameDevTools](https://github.com/TheEmidee/PyGameDevTools) and [pypyr](https://pypyr.io)
+   4. Install [pre-commit](https://pre-commit.com/index.html) and its hooks.
+   5. Call the script `ue-check-engine-installation` for a foreign project.
+- Execute `CompileAndRunEditor.ps1` (in the game project folder) to compile your C++ code and run the editor when done!
+- Execute `GenerateVSSolution.ps1` (in the game project folder) to regenerate the Visual Studio solution.
+- For native projects, `.pre-commit-config.yaml` also runs `ue-ugs-pull` on the `post-checkout` and `post-merge` git hooks.
 
-## Custom bootstrap / setup scripts
+## Developing this tool
 
-You can execute custom python scripts when you bootstrap the project the first time, or when you call `setup.ps1`.
-
-You need to put those scripts in the folder `Scripts/Python/.bootstrap` or `Scripts/Python/.setup` of your project. 
-
-Those scripts will be executed by alphabetical order.
-
-Note that if those scripts require any dependency, you will have to add them to a file named `requirements.txt` that you will also to place in the folder `Scripts/Python`.
-
-Some ideas of custom bootstrap scripts:
-* The bootstrap custom scripts can add plugins you always use in each project, as submodules
-
-Some ideas of custom setup scripts:
-* Update the file `BuildConfiguration.xml` with default values for the `MaxProcessorCount`
-* Install [Horde Agent](https://dev.epicgames.com/documentation/en-us/unreal-engine/horde-agent-deployment-for-unreal-engine) to setup a build farm
-* Setup [AutoSDK](https://dev.epicgames.com/documentation/en-us/unreal-engine/using-the-autosdk-system-in-unreal-engine)
-* etc...
-
-You can find examples [here](Examples/).
+The tool's source lives in `src/ueprojectbootstrap`. Each bootstrap step is its own class in `src/ueprojectbootstrap/steps`, implementing the abstract `Step` class (an `execute()` method and an `order` property); the CLI discovers and runs them in order automatically. Run `setup-env.ps1` to set up a dev environment with `uv`.
