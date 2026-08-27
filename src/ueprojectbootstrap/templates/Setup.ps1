@@ -84,6 +84,60 @@ function Add-DefenderExclusions {
     Add-MpPreference -ExclusionPath $RepositoryRoot
 }
 
+function Test-DefenderExclusionApplied {
+    # Windows Defender redacts ExclusionPath for non-elevated callers (by design, so
+    # malware can't enumerate excluded folders), so this can only be verified when
+    # already running elevated. Returns $null for "unknown" rather than $false.
+    if (-not (Test-IsElevated)) {
+        return $null
+    }
+
+    if (-not (Get-Command Get-MpPreference -ErrorAction SilentlyContinue)) {
+        return $false
+    }
+
+    try {
+        $exclusions = (Get-MpPreference -ErrorAction Stop).ExclusionPath
+    }
+    catch {
+        return $null
+    }
+
+    return @($exclusions) -contains $RepositoryRoot.TrimEnd('\')
+}
+
+function Test-SearchIndexingDisabled {
+    $folder = Get-Item -Path $RepositoryRoot -Force -ErrorAction SilentlyContinue
+    if (-not $folder) {
+        return $false
+    }
+
+    return [bool]($folder.Attributes -band [IO.FileAttributes]::NotContentIndexed)
+}
+
+function Test-PerformanceOptimizationsApplied {
+    $defenderExclusionApplied = Test-DefenderExclusionApplied
+    if ($null -eq $defenderExclusionApplied) {
+        Write-Host "Windows Defender exclusion state on $RepositoryRoot cannot be verified without administrator privileges." -ForegroundColor Yellow
+    } elseif ($defenderExclusionApplied) {
+        Write-Host "Windows Defender exclusion is already applied on $RepositoryRoot." -ForegroundColor Green
+    } else {
+        Write-Host "Windows Defender exclusion is not applied on $RepositoryRoot." -ForegroundColor Yellow
+    }
+
+    $searchIndexingDisabled = Test-SearchIndexingDisabled
+    if ($searchIndexingDisabled) {
+        Write-Host "Search indexing is already disabled on $RepositoryRoot." -ForegroundColor Green
+    } else {
+        Write-Host "Search indexing is not disabled on $RepositoryRoot." -ForegroundColor Yellow
+    }
+
+    # The Defender exclusion state can't be reliably read before elevation, so search
+    # indexing - always disabled in the same pass as the Defender exclusion - is used
+    # as the proxy signal for "optimizations already applied".
+    return $searchIndexingDisabled
+}
+
 function Disable-SearchIndexing {
     Write-Host "Disabling Windows Search indexing on $RepositoryRoot..." -ForegroundColor Cyan
 
@@ -106,6 +160,11 @@ function Invoke-PerformanceOptimizations {
 }
 
 function Request-PerformanceOptimizations {
+    if (Test-PerformanceOptimizationsApplied) {
+        Write-Host "Performance optimizations are already applied on $RepositoryRoot. Skipping." -ForegroundColor Green
+        return
+    }
+
     $response = Read-Host "Apply performance optimizations for compiling/running Unreal Engine (Windows Defender + Search indexing exclusions on '$RepositoryRoot')? This requires administrator privileges. [y/N]"
     if ($response -notmatch '^[Yy]') {
         Write-Host "Skipping performance optimizations." -ForegroundColor Yellow
