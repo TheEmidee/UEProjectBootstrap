@@ -32,11 +32,12 @@ When the script is done, you can now commit all the changes so that all the user
 When the project has been bootstrapped, each user can:
 
 - Execute `Setup.ps1` (at the root of the repository) to:
-   1. Run `Scripts/Setup.bat` if the project is native.
-   2. Install [Astral UV](https://docs.astral.sh/uv/) and the required Python version.
-   3. Create the python virtual environment with the python packages [UEPyScripts](https://github.com/TheEmidee/UEPyScripts), [PyGameDevTools](https://github.com/TheEmidee/PyGameDevTools) and [pypyr](https://pypyr.io)
-   4. Install [pre-commit](https://pre-commit.com/index.html) and its hooks.
-   5. Call the script `ue-check-engine-installation` for a foreign project.
+   1. Ask whether to apply performance optimizations (Windows Defender and Search indexing exclusions on the repository root). If accepted and the script isn't already running elevated, it relaunches itself with an admin prompt to apply them, then continues. Skipped when `-BuildMachine` is passed.
+   2. Run `Scripts/UE/Setup.bat` if the project is native.
+   3. Install [Astral UV](https://docs.astral.sh/uv/) and the required Python version.
+   4. Create the python virtual environment with the python packages [UEPyScripts](https://github.com/TheEmidee/UEPyScripts), [PyGameDevTools](https://github.com/TheEmidee/PyGameDevTools) and [pypyr](https://pypyr.io)
+   5. Install [pre-commit](https://pre-commit.com/index.html) and its hooks.
+   6. Call the script `ue-check-engine-installation` for a foreign project.
 - Execute `CompileAndRunEditor.ps1` (in the game project folder) to compile your C++ code and run the editor when done!
 - Execute `GenerateVSSolution.ps1` (in the game project folder) to regenerate the Visual Studio solution.
 - For native projects, `.pre-commit-config.yaml` also runs `ue-ugs-pull` on the `post-checkout` and `post-merge` git hooks.

@@ -1,5 +1,6 @@
 param (
-    [switch]$BuildMachine = $false
+    [switch]$BuildMachine = $false,
+    [switch]$RunPerformanceOptimizations = $false
 )
 
 $ErrorActionPreference = "Stop"
@@ -67,6 +68,65 @@ function Invoke-CustomSetupScripts {
     }
 }
 
+function Test-IsElevated {
+    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal = New-Object Security.Principal.WindowsPrincipal($identity)
+    return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
+function Add-DefenderExclusions {
+    if (-not (Get-Command Add-MpPreference -ErrorAction SilentlyContinue)) {
+        Write-Host "Windows Defender PowerShell module not available. Skipping AV exclusions." -ForegroundColor Yellow
+        return
+    }
+
+    Write-Host "Adding Windows Defender exclusion for $RepositoryRoot..." -ForegroundColor Cyan
+    Add-MpPreference -ExclusionPath $RepositoryRoot
+}
+
+function Disable-SearchIndexing {
+    Write-Host "Disabling Windows Search indexing on $RepositoryRoot..." -ForegroundColor Cyan
+
+    $folders = @(Get-Item -Path $RepositoryRoot -Force)
+    $folders += Get-ChildItem -Path $RepositoryRoot -Recurse -Directory -Force -ErrorAction SilentlyContinue
+
+    foreach ($folder in $folders) {
+        $folder.Attributes = $folder.Attributes -bor [IO.FileAttributes]::NotContentIndexed
+    }
+}
+
+function Invoke-PerformanceOptimizations {
+    try {
+        Add-DefenderExclusions
+        Disable-SearchIndexing
+    }
+    catch {
+        Write-Host "Failed to apply performance optimizations: $($_.Exception.Message)" -ForegroundColor Yellow
+    }
+}
+
+function Request-PerformanceOptimizations {
+    $response = Read-Host "Apply performance optimizations for compiling/running Unreal Engine (Windows Defender + Search indexing exclusions on '$RepositoryRoot')? This requires administrator privileges. [y/N]"
+    if ($response -notmatch '^[Yy]') {
+        Write-Host "Skipping performance optimizations." -ForegroundColor Yellow
+        return
+    }
+
+    if (Test-IsElevated) {
+        Invoke-PerformanceOptimizations
+        return
+    }
+
+    Write-Host "Elevating to apply performance optimizations..." -ForegroundColor Cyan
+    try {
+        $argumentList = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$PSCommandPath`"", "-RunPerformanceOptimizations")
+        Start-Process -FilePath "powershell.exe" -ArgumentList $argumentList -Verb RunAs -Wait
+    }
+    catch {
+        Write-Host "Elevation was cancelled or failed. Skipping performance optimizations." -ForegroundColor Yellow
+    }
+}
+
 function Install-PreCommit {
     if (Get-Command pre-commit -ErrorAction SilentlyContinue) {
         Write-Host "Pre-Commit is already installed." -ForegroundColor Green
@@ -85,7 +145,16 @@ function Install-PreCommit {
 }
 
 try {
+    if ($RunPerformanceOptimizations) {
+        Invoke-PerformanceOptimizations
+        exit 0
+    }
+
     Write-Host "Starting project setup..." -ForegroundColor Cyan
+
+    if ($BuildMachine -eq $false) {
+        Request-PerformanceOptimizations
+    }
 
     if ($IsForeignProject) {
         Write-Host "Foreign project..." -ForegroundColor Green
