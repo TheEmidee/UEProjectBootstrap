@@ -11,6 +11,7 @@ $RequiredPackages = @("UEPyScripts", "GameDevTools", "JenkinsfileGenerator")
 $RepositoryRoot = $PSScriptRoot
 $PythonFolder = Join-Path -Path $RepositoryRoot -ChildPath "Scripts/Python"
 $VenvScriptsFolder = Join-Path -Path $PythonFolder -ChildPath ".venv/Scripts"
+$CustomSetupScriptsFolder = Join-Path -Path $RepositoryRoot -ChildPath "Scripts/Python/Setup"
 
 function Install-UV {
     if (Get-Command uv -ErrorAction SilentlyContinue) {
@@ -48,6 +49,24 @@ function Initialize-VirtualEnvironment {
     }
 }
 
+function Invoke-CustomSetupScripts {
+    if (-not (Test-Path $CustomSetupScriptsFolder)) {
+        Write-Host "No custom setup scripts found in $CustomSetupScriptsFolder." -ForegroundColor Yellow
+        return
+    }
+
+    $venvPython = Join-Path -Path $VenvScriptsFolder -ChildPath "python.exe"
+    $scripts = Get-ChildItem -Path $CustomSetupScriptsFolder -Filter "*.py" -File | Sort-Object Name
+
+    foreach ($script in $scripts) {
+        Write-Host "Running custom setup script $($script.Name)..." -ForegroundColor Cyan
+        & $venvPython $script.FullName
+        if ($LASTEXITCODE -ne 0) {
+            throw "Custom setup script $($script.Name) failed with exit code $LASTEXITCODE"
+        }
+    }
+}
+
 function Install-PreCommit {
     if (Get-Command pre-commit -ErrorAction SilentlyContinue) {
         Write-Host "Pre-Commit is already installed." -ForegroundColor Green
@@ -79,6 +98,9 @@ try {
     Install-UV
     Install-Python
     Initialize-VirtualEnvironment
+
+    Write-Host "Running custom setup scripts..." -ForegroundColor Cyan
+    Invoke-CustomSetupScripts
 
     if ($BuildMachine -eq $false) {
         Write-Host "Installing pre-commit hooks..." -ForegroundColor Cyan
