@@ -72,8 +72,8 @@ try {
         Write-Host "Foreign project..." -ForegroundColor Green
     } else {
         Write-Host "Native project..." -ForegroundColor Green
-        Write-Host "Executing Scripts/Setup.bat..." -ForegroundColor Green
-        & (Join-Path -Path $RepositoryRoot -ChildPath "Scripts/Setup.bat")
+        Write-Host "Executing Scripts/UE/Setup.bat..." -ForegroundColor Green
+        & (Join-Path -Path $RepositoryRoot -ChildPath "Scripts/UE/Setup.bat")
     }
 
     Install-UV

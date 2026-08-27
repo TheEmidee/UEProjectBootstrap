@@ -29,6 +29,10 @@ class BootstrapContext:
         return self.repository_root / "Scripts" / "Python"
 
     @property
+    def native_scripts_folder(self) -> Path:
+        return self.repository_root / "Scripts" / "UE"
+
+    @property
     def venv_scripts_folder(self) -> Path:
         return self.python_folder / ".venv" / "Scripts"
 
