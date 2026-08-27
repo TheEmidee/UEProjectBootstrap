@@ -26,6 +26,7 @@ The tool will:
    - Create `config.ini` in `Config/PyScripts` of the game project folder.
    - Create `CompileAndRunEditor.ps1` and `GenerateVSSolution.ps1` in the game project folder.
    - Create `.pre-commit-config.yaml` at the root of the repository.
+   - Run any python script found in `Scripts/Python/Bootstrap`, using `uv run`.
 
 When the script is done, you can now commit all the changes so that all the users have access to the various scripts.
 
@@ -41,6 +42,14 @@ When the project has been bootstrapped, each user can:
 - Execute `CompileAndRunEditor.ps1` (in the game project folder) to compile your C++ code and run the editor when done!
 - Execute `GenerateVSSolution.ps1` (in the game project folder) to regenerate the Visual Studio solution.
 - For native projects, `.pre-commit-config.yaml` also runs `ue-ugs-pull` on the `post-checkout` and `post-merge` git hooks.
+
+## Custom bootstrap / setup scripts
+
+You can run custom python scripts at two points:
+- When the project is bootstrapped (once, by whoever runs `ueprojectbootstrap`): put scripts in `Scripts/Python/Bootstrap`, they are run in alphabetical order with `uv run`.
+- Every time a developer runs `Setup.ps1`: put scripts in `Scripts/Python/Setup`, they are run in alphabetical order using the project's virtual environment.
+
+See [Examples](Examples/) for sample scripts.
 
 ## Developing this tool
 
