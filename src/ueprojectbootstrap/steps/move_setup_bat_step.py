@@ -10,7 +10,10 @@ from ueprojectbootstrap.steps.base import Step
 
 _GIT_HOOKS_GOTO_MARKER = "goto no_git_hooks_directory"
 _GIT_HOOKS_LABEL_MARKER = ":no_git_hooks_directory"
+_GIT_HOOKS_DISABLED_MARKER = "rem Git hooks are registered by pre-commit instead"
 _PUSHD_LINE_PATTERN = re.compile(r'(pushd\s+"%~dp0)[^"]*(")', re.IGNORECASE)
+_GIT_DEPENDENCIES_LINE_PATTERN = re.compile(r'(GitDependencies\.exe)(\s+%PROMPT_ARGUMENT%\s+%\*)', re.IGNORECASE)
+_GIT_DEPENDENCIES_EXCLUDED_PREFIXES = ("Templates/", "Samples/", "FeaturePacks/")
 
 
 class MoveSetupBatStep(Step):
@@ -24,6 +27,7 @@ class MoveSetupBatStep(Step):
         bat_destination = self._move_file(context, "Setup.bat")
         if bat_destination is not None:
             self._fix_relative_root_reference(bat_destination, context)
+            self._exclude_templates_samples_and_feature_packs(bat_destination)
             self._disable_git_hooks_registration(bat_destination)
 
         # Setup.sh is moved alongside Setup.bat for consistency, but it isn't used by
@@ -68,12 +72,34 @@ class MoveSetupBatStep(Step):
         setup_bat_path.write_text(new_content, encoding="utf-8", newline="\r\n")
         print(f"Repointed the repository root reference in {setup_bat_path} to its new location.")
 
+    def _exclude_templates_samples_and_feature_packs(self, setup_bat_path: Path) -> None:
+        # Exclude Templates/, Samples/ and FeaturePacks/ from the dependency sync
+        # itself, so GitDependencies never downloads them, instead of downloading
+        # them and trimming them out of .uedependencies afterwards.
+        exclude_args = " ".join(f"-exclude={prefix}" for prefix in _GIT_DEPENDENCIES_EXCLUDED_PREFIXES)
+        content = setup_bat_path.read_text(encoding="utf-8")
+
+        def _replace(match: re.Match[str]) -> str:
+            return f"{match.group(1)} {exclude_args}{match.group(2)}"
+
+        new_content, count = _GIT_DEPENDENCIES_LINE_PATTERN.subn(_replace, content, count=1)
+        if count == 0:
+            print(f"Could not find the GitDependencies.exe line in {setup_bat_path}. Leaving it untouched.")
+            return
+
+        setup_bat_path.write_text(new_content, encoding="utf-8", newline="\r\n")
+        print(f"Added Templates/Samples/FeaturePacks excludes to GitDependencies in {setup_bat_path}.")
+
     def _disable_git_hooks_registration(self, setup_bat_path: Path) -> None:
         # Setup.bat registers .git/hooks/post-checkout and post-merge itself to run
         # GitDependencies.exe. We manage those same hooks through pre-commit instead
         # (see WritePreCommitConfigStep's ugs-pull hook), so leaving this in would
         # fight pre-commit for ownership of the hook files.
         lines = setup_bat_path.read_text(encoding="utf-8").splitlines(keepends=True)
+
+        if any(_GIT_HOOKS_DISABLED_MARKER in line for line in lines):
+            print(f"Git hook registration in {setup_bat_path} is already disabled. Skipping.")
+            return
 
         start_index = next((i for i, line in enumerate(lines) if _GIT_HOOKS_GOTO_MARKER in line), None)
         if start_index is None:

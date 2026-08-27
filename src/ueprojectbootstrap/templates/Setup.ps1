@@ -77,7 +77,7 @@ function Install-PreCommit {
 
     Push-Location $RepositoryRoot
     try {
-        pre-commit install
+        pre-commit install -f
     }
     finally {
         Pop-Location
