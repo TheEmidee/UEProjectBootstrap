@@ -1,3 +1,7 @@
+# /// script
+# dependencies = ["GitPython"]
+# ///
+
 import pathlib
 from git import Repo
 

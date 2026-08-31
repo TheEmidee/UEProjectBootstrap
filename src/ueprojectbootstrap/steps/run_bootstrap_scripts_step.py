@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 
@@ -23,10 +24,12 @@ class RunBootstrapScriptsStep(Step):
             print(f"No bootstrap scripts found in {bootstrap_scripts_folder}. Skipping.")
             return
 
+        env = {**os.environ, **context.to_env()}
+
         for script in scripts:
             print(f"Running bootstrap script {script.name}...")
             try:
-                subprocess.run(["uv", "run", str(script)], cwd=context.repository_root, check=True)
+                subprocess.run(["uv", "run", str(script)], cwd=context.repository_root, check=True, env=env)
             except subprocess.CalledProcessError as error:
                 print(f"Bootstrap script {script.name} failed: {error}", file=sys.stderr)
                 raise SystemExit(1) from error

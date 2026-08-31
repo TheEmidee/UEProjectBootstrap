@@ -1,3 +1,7 @@
+# /// script
+# dependencies = ["lxml"]
+# ///
+
 import os
 import multiprocessing
 from lxml import etree

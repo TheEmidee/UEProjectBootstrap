@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -23,6 +24,37 @@ class BootstrapContext:
     @property
     def project_config_folder(self) -> Path:
         return self.project_root / "Config"
+
+    @property
+    def engine_version(self) -> str | None:
+        """The "Major.Minor" engine version, read from Engine/Build/Build.version.
+
+        Returns None for a foreign project, or if the file can't be found/parsed.
+        """
+        build_version_path = self.repository_root / "Engine" / "Build" / "Build.version"
+        if not build_version_path.is_file():
+            return None
+
+        data = json.loads(build_version_path.read_text(encoding="utf-8"))
+        return f"{data['MajorVersion']}.{data['MinorVersion']}"
+
+    def to_env(self) -> dict[str, str]:
+        """Context values exposed as environment variables to custom bootstrap/setup
+        scripts, which run as separate subprocesses and so can't be passed the
+        dataclass directly."""
+        env = {
+            "UE_BOOTSTRAP_UPROJECT_PATH": str(self.uproject_path),
+            "UE_BOOTSTRAP_PROJECT_ROOT": str(self.project_root),
+            "UE_BOOTSTRAP_PROJECT_NAME": self.project_name,
+            "UE_BOOTSTRAP_REPOSITORY_ROOT": str(self.repository_root),
+            "UE_BOOTSTRAP_IS_FOREIGN_PROJECT": "1" if self.is_foreign_project else "0",
+        }
+
+        engine_version = self.engine_version
+        if engine_version is not None:
+            env["UE_BOOTSTRAP_ENGINE_VERSION"] = engine_version
+
+        return env
 
     @property
     def python_folder(self) -> Path:

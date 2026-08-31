@@ -50,18 +50,37 @@ function Initialize-VirtualEnvironment {
     }
 }
 
+function Get-EngineVersion {
+    $buildVersionPath = Join-Path -Path $RepositoryRoot -ChildPath "Engine/Build/Build.version"
+    if (-not (Test-Path $buildVersionPath)) {
+        return $null
+    }
+
+    $buildVersion = Get-Content -Path $buildVersionPath -Raw | ConvertFrom-Json
+    return "$($buildVersion.MajorVersion).$($buildVersion.MinorVersion)"
+}
+
 function Invoke-CustomSetupScripts {
     if (-not (Test-Path $CustomSetupScriptsFolder)) {
         Write-Host "No custom setup scripts found in $CustomSetupScriptsFolder." -ForegroundColor Yellow
         return
     }
 
-    $venvPython = Join-Path -Path $VenvScriptsFolder -ChildPath "python.exe"
     $scripts = Get-ChildItem -Path $CustomSetupScriptsFolder -Filter "*.py" -File | Sort-Object Name
+
+    # Custom setup scripts run as separate processes, so context is handed to them
+    # through environment variables instead of being passed directly.
+    $env:UE_BOOTSTRAP_REPOSITORY_ROOT = $RepositoryRoot
+    $env:UE_BOOTSTRAP_IS_FOREIGN_PROJECT = if ($IsForeignProject) { "1" } else { "0" }
+
+    $engineVersion = Get-EngineVersion
+    if ($engineVersion) {
+        $env:UE_BOOTSTRAP_ENGINE_VERSION = $engineVersion
+    }
 
     foreach ($script in $scripts) {
         Write-Host "Running custom setup script $($script.Name)..." -ForegroundColor Cyan
-        & $venvPython $script.FullName
+        uv run --python $PythonVersion $script.FullName
         if ($LASTEXITCODE -ne 0) {
             throw "Custom setup script $($script.Name) failed with exit code $LASTEXITCODE"
         }

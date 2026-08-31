@@ -49,6 +49,11 @@ You can run custom python scripts at two points:
 - When the project is bootstrapped (once, by whoever runs `ueprojectbootstrap`): put scripts in `Scripts/Python/Bootstrap`, they are run in alphabetical order with `uv run`.
 - Every time a developer runs `Setup.ps1`: put scripts in `Scripts/Python/Setup`, they are run in alphabetical order using the project's virtual environment.
 
+Since these scripts run as separate processes, they are given context through environment variables instead of arguments:
+- `UE_BOOTSTRAP_REPOSITORY_ROOT`: path to the repository root.
+- `UE_BOOTSTRAP_PROJECT_ROOT`, `UE_BOOTSTRAP_PROJECT_NAME`, `UE_BOOTSTRAP_UPROJECT_PATH`, `UE_BOOTSTRAP_IS_FOREIGN_PROJECT` (`1`/`0`): only set by `ueprojectbootstrap` itself, i.e. for `Scripts/Python/Bootstrap` scripts.
+- `UE_BOOTSTRAP_ENGINE_VERSION`: the engine's `Major.Minor` version (e.g. `5.8`), read from `Engine/Build/Build.version`. Set for both `Bootstrap` and `Setup` scripts whenever that file can be found.
+
 See [Examples](Examples/) for sample scripts.
 
 ## Developing this tool
