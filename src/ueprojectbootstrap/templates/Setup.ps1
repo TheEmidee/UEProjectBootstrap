@@ -205,6 +205,25 @@ function Request-PerformanceOptimizations {
     }
 }
 
+function Request-UgsPull {
+    $response = Read-Host "Do you want to use UGS Pull ? [y/N]"
+    if ($response -notmatch '^[Yy]') {
+        Write-Host "Skipping UGS Pull." -ForegroundColor Yellow
+        return
+    }
+
+    $buildVersionPath = Join-Path -Path $RepositoryRoot -ChildPath "Engine/Build/Build.version"
+    if (-not (Test-Path $buildVersionPath)) {
+        Write-Host "$buildVersionPath not found. Skipping UGS Pull." -ForegroundColor Yellow
+        return
+    }
+
+    $buildVersion = Get-Content -Path $buildVersionPath -Raw | ConvertFrom-Json
+    $installedBuildPath = Join-Path -Path $RepositoryRoot -ChildPath "Engine/Build/InstalledBuild.txt"
+    Set-Content -Path $installedBuildPath -Value $buildVersion.BranchName -NoNewline
+    Write-Host "Wrote $installedBuildPath." -ForegroundColor Green
+}
+
 function Install-PreCommit {
     if (Get-Command pre-commit -ErrorAction SilentlyContinue) {
         Write-Host "Pre-Commit is already installed." -ForegroundColor Green
@@ -250,6 +269,8 @@ try {
     Invoke-CustomSetupScripts
 
     if ($BuildMachine -eq $false) {
+        Request-UgsPull
+
         Write-Host "Installing pre-commit hooks..." -ForegroundColor Cyan
         Install-PreCommit
     } else {
