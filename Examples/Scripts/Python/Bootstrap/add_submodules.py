@@ -8,21 +8,20 @@ from git import Repo
 script_dir = pathlib.Path(__file__).parent.resolve()
 repo_root = script_dir.parent.parent.parent
 
-def add_git_submodule(submodule_owner, submodule_name):
+def add_git_submodule(parent_folder, repository_url, destination_folder):
     try:
         repo = Repo(repo_root)
 
-        submodule_url = f"https://github.com/{submodule_owner}/{submodule_name}.git"
-        path = f"Plugins/{submodule_name.replace('UE', '')}"
-        
+        path = f"{parent_folder}/{destination_folder}"
+
         print(f"Adding submodule to root: {repo_root}")
         repo.create_submodule(
-            name=path.split('/')[-1],
+            name=destination_folder,
             path=path,
-            url=submodule_url
+            url=repository_url
         )
 
-        print(f"Successfully added {submodule_url} at {path}")
+        print(f"Successfully added {repository_url} at {path}")
     except Exception as e:
         print(f"Error: {e}")
 
@@ -30,16 +29,22 @@ def add_git_submodule(submodule_owner, submodule_name):
 print(f"Adding Git submodules to repository {repo_root}")
 
 submodules = {
-    "YourCompany": [
-        "UEPlugin1",
-        "UEPlugin2"
-        ],
-    "TheEmidee" : [
-        "UENamingConventionValidation",
-        "UEGithubTools"
-        ]
+    "Plugins": [
+        {
+            "RepositoryUrl": "https://github.com/TheEmidee/UENamingConventionValidation.git",
+            "DestinationFolder": "NamingConventionValidation"
+        },
+        {
+            "RepositoryUrl": "https://github.com/TheEmidee/UEGithubTools.git",
+            "DestinationFolder": "GithubTools"
+        }
+    ]
 }
 
-for owner, submodule_list in submodules.items():
-    for submodule in submodule_list:
-        add_git_submodule(owner, submodule)
+for parent_folder, repositories in submodules.items():
+    for repository_info in repositories:
+        add_git_submodule(
+            parent_folder,
+            repository_info["RepositoryUrl"],
+            repository_info["DestinationFolder"]
+        )
