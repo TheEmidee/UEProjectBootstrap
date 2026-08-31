@@ -16,4 +16,11 @@ class WritePreCommitConfigStep(Step):
             ugs_pull_hook = read_template("pre-commit-config.ugs-pull-hook.yaml")
             content = install_hook_types + content + ugs_pull_hook
 
+            ugs_pull_script = read_template("ugs-pull-if-installed-build.ps1")
+            write_file(
+                context.repository_root / "Scripts" / "PreCommit" / "ugs-pull-if-installed-build.ps1",
+                ugs_pull_script,
+                force=True,
+            )
+
         write_file(context.repository_root / ".pre-commit-config.yaml", content, force=True)

@@ -2,7 +2,7 @@
     hooks:
       - id: ugs-pull
         name: UGS Pull
-        entry: Scripts/Python/.venv/Scripts/ue-ugs-pull.exe
+        entry: powershell -NoProfile -ExecutionPolicy Bypass -File Scripts/PreCommit/ugs-pull-if-installed-build.ps1
         language: system
         pass_filenames: false
         always_run: true
