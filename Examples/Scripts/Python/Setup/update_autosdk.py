@@ -14,6 +14,7 @@ from git import GitCommandError, InvalidGitRepositoryError, NoSuchPathError, Rep
 AUTOSDK_REPOSITORY_URL = "https://github.com/FishingCactus/UEAutoSDK.git"
 DEFAULT_AUTOSDK_ROOT = r"C:\UE\AutoSDK"
 UE_SDKS_ROOT_ENV_VAR = "UE_SDKS_ROOT"
+UE_BOOTSTRAP_IS_BUILD_MACHINE_ENV_VAR = "UE_BOOTSTRAP_IS_BUILD_MACHINE"
 
 
 def ask_yes_no(question, default=False):
@@ -46,6 +47,14 @@ def get_engine_version():
 def get_sdks_root_from_env():
     path = os.environ.get(UE_SDKS_ROOT_ENV_VAR)
     return Path(path) if path else None
+
+
+def is_build_machine():
+    return bool(os.environ.get(UE_BOOTSTRAP_IS_BUILD_MACHINE_ENV_VAR))
+
+
+def has_autosdk_remote(repo):
+    return any(url == AUTOSDK_REPOSITORY_URL for remote in repo.remotes for url in remote.urls)
 
 
 def set_persistent_env_var(name, value):
@@ -130,18 +139,33 @@ def checkout_branch(repo, branch_name):
         sys.exit(1)
 
 
-def main():
-    if not ask_yes_no("Do you want to update AutoSDK on this machine?"):
-        print("Skipping AutoSDK update.")
+def update_autosdk_on_build_machine(branch_name):
+    sdks_root = get_sdks_root_from_env()
+    if sdks_root is None:
+        raise RuntimeError(f"{UE_SDKS_ROOT_ENV_VAR} is not set.")
+
+    if not sdks_root.is_dir():
+        raise RuntimeError(f"{UE_SDKS_ROOT_ENV_VAR} points to '{sdks_root}', which is not a valid folder.")
+
+    repo = open_git_repository(sdks_root)
+    if repo is None:
+        raise RuntimeError(f"'{sdks_root}' is not a valid git repository.")
+
+    if not has_autosdk_remote(repo):
+        raise RuntimeError(
+            f"The git repository at '{sdks_root}' does not have a remote pointing to {AUTOSDK_REPOSITORY_URL}."
+        )
+
+    print_git_repository_state(repo)
+
+    if not repo.head.is_detached and repo.active_branch.name == branch_name:
+        print(f"Already on branch '{branch_name}'.")
         return
 
-    engine_version = get_engine_version()
-    if not engine_version:
-        print("Error: could not determine the engine version. Aborting AutoSDK update.")
-        sys.exit(1)
+    checkout_branch(repo, branch_name)
 
-    branch_name = f"UE_{engine_version}"
 
+def update_autosdk_interactively(branch_name):
     sdks_root = get_sdks_root_from_env()
     if sdks_root is None:
         print(f"{UE_SDKS_ROOT_ENV_VAR} is not set.")
@@ -160,6 +184,26 @@ def main():
             return
 
     checkout_branch(repo, branch_name)
+
+
+def main():
+    build_machine = is_build_machine()
+
+    if not build_machine and not ask_yes_no("Do you want to update AutoSDK on this machine?"):
+        print("Skipping AutoSDK update.")
+        return
+
+    engine_version = get_engine_version()
+    if not engine_version:
+        print("Error: could not determine the engine version. Aborting AutoSDK update.")
+        sys.exit(1)
+
+    branch_name = f"UE_{engine_version}"
+
+    if build_machine:
+        update_autosdk_on_build_machine(branch_name)
+    else:
+        update_autosdk_interactively(branch_name)
 
 
 if __name__ == "__main__":

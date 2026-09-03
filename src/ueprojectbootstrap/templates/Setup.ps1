@@ -72,6 +72,7 @@ function Invoke-CustomSetupScripts {
     # through environment variables instead of being passed directly.
     $env:UE_BOOTSTRAP_REPOSITORY_ROOT = $RepositoryRoot
     $env:UE_BOOTSTRAP_IS_FOREIGN_PROJECT = if ($IsForeignProject) { "1" } else { "0" }
+    $env:UE_BOOTSTRAP_IS_BUILD_MACHINE = if ($BuildMachine) { "1" } else { "0" }
 
     $engineVersion = Get-EngineVersion
     if ($engineVersion) {
