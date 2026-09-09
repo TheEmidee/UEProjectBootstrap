@@ -223,6 +223,24 @@ function Request-UgsPull {
     $installedBuildPath = Join-Path -Path $RepositoryRoot -ChildPath "Engine/Build/InstalledBuild.txt"
     Set-Content -Path $installedBuildPath -Value $buildVersion.BranchName -NoNewline
     Write-Host "Wrote $installedBuildPath." -ForegroundColor Green
+
+    $response = Read-Host "Do you want to run the UGS Pull operation now ? [y/N]"
+    if ($response -notmatch '^[Yy]') {
+        Write-Host "Skipping UGS Pull execution." -ForegroundColor Yellow
+        return
+    }
+
+    $ugsPullScriptPath = Join-Path -Path $RepositoryRoot -ChildPath "Scripts/PreCommit/ugs-pull-if-installed-build.ps1"
+    if (-not (Test-Path $ugsPullScriptPath)) {
+        Write-Host "$ugsPullScriptPath not found. Skipping UGS Pull execution." -ForegroundColor Yellow
+        return
+    }
+
+    Write-Host "Running UGS Pull..." -ForegroundColor Cyan
+    & $ugsPullScriptPath
+    if ($LASTEXITCODE -ne 0) {
+        throw "UGS Pull failed with exit code $LASTEXITCODE"
+    }
 }
 
 function Install-PreCommit {
