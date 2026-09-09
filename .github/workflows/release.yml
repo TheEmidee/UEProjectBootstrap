@@ -1,0 +1,122 @@
+name: Release Python Package
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0  # Fetch all history for tag creation
+          ref: develop
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check if CHANGELOG was updated
+        run: |
+          # Get the tag name without 'refs/tags/' prefix
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          VERSION_NUMBER="${TAG_NAME#v}"
+          
+          echo "Checking if CHANGELOG.md contains version $VERSION_NUMBER"
+          
+          # Check if CHANGELOG.md exists
+          if [ ! -f CHANGELOG.md ]; then
+            echo "❌ ERROR: CHANGELOG.md does not exist!"
+            exit 1
+          fi
+          
+          # Check if the version appears in CHANGELOG.md
+          if grep -q "## ${VERSION_NUMBER}" CHANGELOG.md || grep -q "## \[${VERSION_NUMBER}\]" CHANGELOG.md; then
+            echo "✅ CHANGELOG.md has been updated for version $VERSION_NUMBER"
+          else
+            echo "❌ ERROR: CHANGELOG.md does not contain an entry for version $VERSION_NUMBER"
+            echo "Please update CHANGELOG.md before creating a release tag."
+            exit 1
+          fi
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.0.1
+        with:
+          enable-cache: true
+
+      - name: Build package
+        run: uv build
+
+      - name: Store the distribution packages
+        uses: actions/upload-artifact@v4
+        with:
+            name: python-package-distributions
+            path: dist/
+
+      - name: Extract changelog section for this version
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          VERSION_NUMBER="${TAG_NAME#v}"
+
+          awk -v ver="$VERSION_NUMBER" '
+            /^## / {
+              if (found) exit
+              if ($0 ~ "^## \\[?" ver "\\]?") { found=1; next }
+              next
+            }
+            found { print }
+          ' CHANGELOG.md | sed '/./,$!d' > release_notes.md
+
+          if [ ! -s release_notes.md ]; then
+            echo "Release $TAG_NAME" > release_notes.md
+          fi
+
+          echo "----- Extracted release notes -----"
+          cat release_notes.md
+
+      - name: Store release notes
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: release_notes.md
+
+  publish-to-pypi:
+    name: >-
+      Publish Python 🐍 distribution 📦 to PyPI
+    needs:
+    - build
+    runs-on: ubuntu-latest
+    environment:
+      name: publish
+    permissions:
+      id-token: write  # IMPORTANT: mandatory for trusted publishing
+      contents: write  # Required to create GitHub releases
+
+    steps:
+    - name: Download all the dists
+      uses: actions/download-artifact@v6
+      with:
+        name: python-package-distributions
+        path: dist/
+
+    - name: Download release notes
+      uses: actions/download-artifact@v6
+      with:
+        name: release-notes
+
+    - name: Publish distribution 📦 to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v3
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        draft: false
+        prerelease: false
+        files: dist/*
+        body_path: release_notes.md
