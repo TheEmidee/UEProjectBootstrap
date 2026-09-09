@@ -24,7 +24,10 @@ classifiers = [
   "Topic :: Software Development :: Libraries",
   "Topic :: Utilities",
 ]
-dependencies = []
+dependencies = [
+  "invoke",
+  "types-invoke"
+]
 urls.Changelog = "https://github.com/TheEmidee/UEProjectBootStrap/releases"
 urls.Homepage = "https://github.com/TheEmidee/UEProjectBootStrap"
 urls.Source = "https://github.com/TheEmidee/UEProjectBootStrap"
@@ -49,6 +52,7 @@ dev = ["UEProjectBootStrap[lint, dist]"]
 [tool.ruff]
 line-length = 150
 indent-width = 4
+extend-exclude = ["Examples"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -71,6 +75,7 @@ convention = "google"
 [tool.mypy]
 warn_return_any = true
 disallow_untyped_defs = true
+exclude = "^Examples/"
 
 [build-system]
 requires = ["hatchling", "hatch-vcs"]

@@ -28,6 +28,7 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     )
     return parser.parse_args(argv)
 
+
 def _run_setup(context: BootstrapContext) -> None:
     setup_script = context.repository_root / "Setup.ps1"
     print(f"\nExecuting {setup_script}...")

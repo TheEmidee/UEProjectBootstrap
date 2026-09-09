@@ -2,9 +2,11 @@
 # dependencies = ["lxml"]
 # ///
 
-import os
 import multiprocessing
+import os
+
 from lxml import etree
+
 
 def update_parallel_executor(root):
     pe = root.find(".//{https://www.unrealengine.com/BuildConfiguration}ParallelExecutor")

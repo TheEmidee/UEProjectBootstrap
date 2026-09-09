@@ -3,6 +3,7 @@
 # ///
 
 import pathlib
+
 from git import Repo
 
 script_dir = pathlib.Path(__file__).parent.resolve()

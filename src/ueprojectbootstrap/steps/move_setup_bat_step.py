@@ -12,7 +12,7 @@ _GIT_HOOKS_GOTO_MARKER = "goto no_git_hooks_directory"
 _GIT_HOOKS_LABEL_MARKER = ":no_git_hooks_directory"
 _GIT_HOOKS_DISABLED_MARKER = "rem Git hooks are registered by pre-commit instead"
 _PUSHD_LINE_PATTERN = re.compile(r'(pushd\s+"%~dp0)[^"]*(")', re.IGNORECASE)
-_GIT_DEPENDENCIES_LINE_PATTERN = re.compile(r'(GitDependencies\.exe)(\s+%PROMPT_ARGUMENT%\s+%\*)', re.IGNORECASE)
+_GIT_DEPENDENCIES_LINE_PATTERN = re.compile(r"(GitDependencies\.exe)(\s+%PROMPT_ARGUMENT%\s+%\*)", re.IGNORECASE)
 _GIT_DEPENDENCIES_EXCLUDED_PREFIXES = ("Templates/", "Samples/", "FeaturePacks/")
 
 
@@ -66,7 +66,7 @@ class MoveSetupBatStep(Step):
 
         new_content, count = _PUSHD_LINE_PATTERN.subn(_replace, content, count=1)
         if count == 0:
-            print(f'Could not find a \'pushd "%~dp0..."\' line in {setup_bat_path}. Leaving it untouched.')
+            print(f"Could not find a 'pushd \"%~dp0...\"' line in {setup_bat_path}. Leaving it untouched.")
             return
 
         setup_bat_path.write_text(new_content, encoding="utf-8", newline="\r\n")
