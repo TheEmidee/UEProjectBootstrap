@@ -1,18 +1,128 @@
 [project]
-name = "ueprojectbootstrap"
-version = "1.2.0"
-description = "Bootstrap an Unreal Engine project with various tools and scripts, like UEPyScripts and GameDevTools, using Astral UV"
-readme = "README.md"
-license = { text = "MIT" }
+name = "UEProjectBootStrap"
+dynamic = ["version"]
+description = "Bootstraps an Unreal Engine project with various tools and scripts, like UEPyScripts and GameDevTools, using Astral UV"
+readme.content-type = "text/markdown"
+readme.file = "README.md"
+keywords = [
+  "bootstrap",
+  "unreal engine"
+]
+license = {file = "LICENSE"}
+maintainers = [
+  { name = "Michael Delva", email = "michael@emidee.net" },
+]
+authors = [
+  { name = "Michael Delva", email = "michael@emidee.net" },
+]
 requires-python = ">=3.11"
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "Operating System :: Microsoft :: Windows",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Software Development :: Libraries",
+  "Topic :: Utilities",
+]
 dependencies = []
+urls.Changelog = "https://github.com/TheEmidee/UEProjectBootStrap/releases"
+urls.Homepage = "https://github.com/TheEmidee/UEProjectBootStrap"
+urls.Source = "https://github.com/TheEmidee/UEProjectBootStrap"
+urls.Tracker = "https://github.com/TheEmidee/UEProjectBootStrap/issues"
 
-[project.scripts]
-ueprojectbootstrap = "ueprojectbootstrap.cli:main"
+[project.optional-dependencies]
+lint = [ 
+  "ruff",
+  "mypy"
+]
+
+dist = [
+  "hatchling",
+  "build",
+  "wheel",
+  "twine",
+  "towncrier"
+]
+
+dev = ["UEProjectBootStrap[lint, dist]"]
+
+[tool.ruff]
+line-length = 150
+indent-width = 4
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+
+[tool.ruff.lint]
+select = [
+    "F",   # pyflakes
+    "E",   # pycodestyle
+    "I",   # isort
+    "ANN", # flake8 type annotations
+    "RUF", # ruff-specific rules
+]
+fixable = ["ALL"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.mypy]
+warn_return_any = true
+disallow_untyped_defs = true
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
 
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
 [tool.hatch.build.targets.wheel]
-packages = ["src/ueprojectbootstrap"]
+packages = ["src/generator"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/tests",
+    "/README.md",
+    "/LICENSE",
+]
+exclude = [
+    "/.git",
+    "/.github",
+    "/.pytest_cache",
+    "/__pycache__",
+]
+
+[tool.towncrier]
+package = "JenkinsfileGenerator"
+package_dir = "src"
+filename = "CHANGELOG.md"
+directory = ".changelog"
+underlines = ["", "", ""]
+title_format = "## [{version}] - {project_date}"
+issue_format = "[#{issue}](https://github.com/TheEmidee/JenkinsFileGenerator/issues/{issue})"
+all_bullets = true
+
+[[tool.towncrier.type]]
+name = "Security"
+
+[[tool.towncrier.type]]
+name = "Removed"
+
+[[tool.towncrier.type]]
+name = "Deprecated"
+
+[[tool.towncrier.type]]
+name = "Added"
+
+[[tool.towncrier.type]]
+name = "Changed"
+
+[[tool.towncrier.type]]
+name = "Fixed"
